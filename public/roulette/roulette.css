@@ -1,0 +1,616 @@
+/* =========================================================
+   BEATPLAY — MUSIC ROULETTE
+========================================================= */
+
+/* La tarjeta del menú ocupa toda la fila: es el único
+   juego multijugador y conviene que se distinga. */
+.game-card[data-game="roulette"] {
+    grid-column: 1 / -1;
+    min-height: 170px;
+}
+
+.rouletteLayout {
+    width: min(1250px, 90vw);
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 30px 0 60px;
+    color: var(--white, #f1f0eb);
+}
+
+
+/* =========================================================
+   CABECERA
+========================================================= */
+
+.rouletteHeader {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 25px;
+    padding-bottom: 25px;
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--line, #292929);
+}
+
+.rouletteEyebrow {
+    display: block;
+    color: var(--accent, #8b78a5);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 8px;
+    letter-spacing: 2px;
+}
+
+.rouletteTitle {
+    margin-top: 10px;
+    font-family: var(--display, "Bebas Neue", sans-serif);
+    font-size: clamp(46px, 7vw, 86px);
+    font-weight: 400;
+    line-height: 0.78;
+    letter-spacing: -1px;
+}
+
+#exitRouletteButton {
+    height: 42px;
+    padding: 0 18px;
+    border: 1px solid var(--line, #292929);
+    background: transparent;
+    color: var(--grey, #858582);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 9px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+#exitRouletteButton:hover {
+    border-color: var(--white, #f1f0eb);
+    color: var(--white, #f1f0eb);
+}
+
+
+/* =========================================================
+   ENTRADA
+========================================================= */
+
+.rouletteView.hidden {
+    display: none !important;
+}
+
+.rouletteLead {
+    max-width: 520px;
+    margin-bottom: 45px;
+    color: var(--grey, #858582);
+    font-family: var(--serif, "Instrument Serif", serif);
+    font-size: 26px;
+    line-height: 1.2;
+}
+
+.rouletteForms {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 25px;
+    max-width: 780px;
+    margin-bottom: 35px;
+}
+
+.rouletteForm label {
+    display: block;
+    margin-bottom: 10px;
+    color: var(--grey, #858582);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 8px;
+    letter-spacing: 1.5px;
+}
+
+.rouletteRow {
+    display: flex;
+    gap: 10px;
+}
+
+.rouletteInput {
+    width: 100%;
+    height: 50px;
+    padding: 0 14px;
+    border: 1px solid var(--line, #292929);
+    background: #101010;
+    color: var(--white, #f1f0eb);
+    font-family: inherit;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.rouletteInput:focus {
+    border-color: var(--accent, #8b78a5);
+}
+
+#rouletteCode {
+    font-family: var(--mono, "DM Mono", monospace);
+    letter-spacing: 6px;
+    text-transform: uppercase;
+}
+
+
+/* =========================================================
+   BOTONES
+========================================================= */
+
+.rouletteButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+    height: 50px;
+    padding: 0 22px;
+    border: 0;
+    background: var(--white, #f1f0eb);
+    color: var(--black, #0a0a0a);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 10px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.rouletteButton:hover:not(:disabled) {
+    background: var(--accent, #8b78a5);
+    color: var(--white, #f1f0eb);
+}
+
+.rouletteButton:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+}
+
+.rouletteButton.secondary {
+    gap: 0;
+    background: transparent;
+    border: 1px solid var(--line, #292929);
+    color: var(--grey, #858582);
+}
+
+.rouletteButton.secondary:hover:not(:disabled) {
+    background: transparent;
+    border-color: var(--white, #f1f0eb);
+    color: var(--white, #f1f0eb);
+}
+
+.rouletteLink {
+    margin-top: 12px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--grey, #858582);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    cursor: pointer;
+}
+
+.rouletteLink:hover {
+    color: var(--white, #f1f0eb);
+}
+
+
+/* =========================================================
+   SALA
+========================================================= */
+
+.rouletteRoomTop {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 25px;
+    margin-bottom: 40px;
+}
+
+.rouletteCode {
+    margin-top: 8px;
+    font-family: var(--display, "Bebas Neue", sans-serif);
+    font-size: clamp(60px, 9vw, 110px);
+    line-height: 0.8;
+    letter-spacing: 8px;
+}
+
+.rouletteSlots {
+    text-align: right;
+}
+
+.rouletteCount {
+    margin-top: 8px;
+    font-family: var(--display, "Bebas Neue", sans-serif);
+    font-size: 40px;
+    line-height: 0.85;
+}
+
+.rouletteRoomGrid {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 30px;
+    border-top: 1px solid var(--line, #292929);
+    padding-top: 30px;
+}
+
+.rouletteColumn h2 {
+    margin-bottom: 18px;
+    font-family: var(--display, "Bebas Neue", sans-serif);
+    font-size: 34px;
+    font-weight: 400;
+    line-height: 0.85;
+}
+
+.rouletteStatus {
+    color: var(--grey, #858582);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 9px;
+    letter-spacing: 1px;
+    line-height: 1.6;
+}
+
+
+/* JUGADORES */
+
+.roulettePlayers {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--line, #292929);
+}
+
+.roulettePlayer {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line, #292929);
+}
+
+.roulettePlayerIndex {
+    color: var(--accent, #8b78a5);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 9px;
+}
+
+.roulettePlayerName {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.roulettePlayerName.you::after {
+    content: " (tú)";
+    color: var(--grey, #858582);
+    font-weight: 400;
+}
+
+.roulettePlayerName.host::before {
+    content: "★ ";
+    color: var(--accent, #8b78a5);
+}
+
+.roulettePlayerState {
+    color: var(--grey, #858582);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 8px;
+    letter-spacing: 1px;
+}
+
+.roulettePlayerState.ready {
+    color: var(--accent, #8b78a5);
+}
+
+
+/* PLAYLISTS */
+
+.roulettePlaylists {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+    gap: 12px;
+    max-height: 430px;
+    margin-top: 16px;
+    overflow-y: auto;
+}
+
+.roulettePlaylistCard {
+    padding: 8px;
+    border: 1px solid var(--line, #292929);
+    background: #101010;
+    color: var(--white, #f1f0eb);
+    text-align: left;
+    cursor: pointer;
+    min-width: 0;
+    transition: border-color 0.2s ease;
+}
+
+.roulettePlaylistCard:hover {
+    border-color: var(--white, #f1f0eb);
+}
+
+.roulettePlaylistCard.selected {
+    border-color: var(--accent, #8b78a5);
+}
+
+.roulettePlaylistCard img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    margin-bottom: 8px;
+    object-fit: cover;
+    background: #1a1a1a;
+}
+
+.roulettePlaylistCard strong {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.roulettePlaylistCard small {
+    display: block;
+    margin-top: 4px;
+    color: var(--grey, #858582);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 8px;
+}
+
+.rouletteRoomFooter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 25px;
+    margin-top: 35px;
+    padding-top: 25px;
+    border-top: 1px solid var(--line, #292929);
+}
+
+
+/* =========================================================
+   RONDA
+========================================================= */
+
+.rouletteGameTop {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 30px;
+}
+
+.rouletteRound,
+.rouletteTimer {
+    margin-top: 8px;
+    font-family: var(--display, "Bebas Neue", sans-serif);
+    font-size: 48px;
+    line-height: 0.85;
+}
+
+.rouletteTimerBox {
+    text-align: right;
+}
+
+.rouletteTimer.urgent {
+    color: var(--accent, #8b78a5);
+}
+
+.rouletteCovers {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.rouletteCover {
+    border: 1px solid var(--line, #292929);
+    background: #101010;
+}
+
+.rouletteCover img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+}
+
+.rouletteCoverInfo {
+    padding: 10px;
+}
+
+.rouletteCoverInfo strong {
+    display: block;
+    font-size: 11px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.rouletteCoverInfo span {
+    display: block;
+    margin-top: 4px;
+    color: var(--grey, #858582);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 8px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.rouletteQuestion {
+    margin: 35px 0 18px;
+    font-family: var(--serif, "Instrument Serif", serif);
+    font-size: 28px;
+}
+
+.rouletteAnswers {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+}
+
+.rouletteAnswer {
+    padding: 18px;
+    border: 1px solid var(--line, #292929);
+    background: transparent;
+    color: var(--white, #f1f0eb);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 11px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.rouletteAnswer:hover:not(:disabled) {
+    background: var(--white, #f1f0eb);
+    color: var(--black, #0a0a0a);
+}
+
+.rouletteAnswer.chosen {
+    background: var(--accent, #8b78a5);
+    border-color: var(--accent, #8b78a5);
+    color: var(--white, #f1f0eb);
+}
+
+.rouletteAnswer:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+
+/* =========================================================
+   RESULTADOS
+========================================================= */
+
+.rouletteBig {
+    margin: 12px 0 30px;
+    font-family: var(--display, "Bebas Neue", sans-serif);
+    font-size: clamp(50px, 8vw, 100px);
+    font-weight: 400;
+    line-height: 0.8;
+}
+
+.rouletteScores {
+    border-top: 1px solid var(--line, #292929);
+}
+
+.rouletteScoreRow {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto 110px;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--line, #292929);
+}
+
+.rouletteScoreRow.leader .rouletteScoreName {
+    color: var(--accent, #8b78a5);
+}
+
+.rouletteScoreIndex {
+    color: var(--grey, #858582);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 9px;
+}
+
+.rouletteScoreName {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.rouletteScoreMark {
+    color: var(--grey, #858582);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 9px;
+    letter-spacing: 1px;
+}
+
+.rouletteScoreMark.correct {
+    color: var(--accent, #8b78a5);
+}
+
+.rouletteScorePoints {
+    font-family: var(--display, "Bebas Neue", sans-serif);
+    font-size: 30px;
+    line-height: 1;
+    text-align: right;
+}
+
+#rouletteAgain {
+    margin-top: 35px;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 900px) {
+
+    .rouletteRoomGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .rouletteForms {
+        grid-template-columns: 1fr;
+    }
+
+    .rouletteCovers {
+        gap: 8px;
+    }
+
+    .rouletteCoverInfo {
+        padding: 7px;
+    }
+
+    .rouletteCoverInfo strong {
+        font-size: 9px;
+    }
+
+    .rouletteCoverInfo span {
+        font-size: 7px;
+    }
+}
+
+@media (max-width: 600px) {
+
+    .rouletteLayout {
+        width: calc(100% - 40px);
+    }
+
+    .rouletteLead {
+        font-size: 22px;
+    }
+
+    .rouletteRoomTop,
+    .rouletteRoomFooter {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .rouletteSlots {
+        text-align: left;
+    }
+
+    .rouletteButton {
+        width: 100%;
+    }
+
+    .rouletteCovers {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .rouletteAnswers {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .rouletteScoreRow {
+        grid-template-columns: 26px minmax(0, 1fr) auto 70px;
+        gap: 10px;
+    }
+}

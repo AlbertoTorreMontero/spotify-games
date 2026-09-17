@@ -1,0 +1,196 @@
+<div class="rouletteLayout">
+
+    <header class="rouletteHeader">
+
+        <div>
+            <span class="rouletteEyebrow">MULTIJUGADOR</span>
+            <h1 class="rouletteTitle">MUSIC ROULETTE</h1>
+        </div>
+
+        <button id="exitRouletteButton" type="button">SALIR</button>
+
+    </header>
+
+
+    <!-- =====================================================
+         ENTRADA
+    ====================================================== -->
+
+    <section id="rouletteLobby" class="rouletteView">
+
+        <p class="rouletteLead">
+            Cinco portadas de la playlist de alguien.
+            Quince segundos para adivinar de quién es.
+        </p>
+
+        <div class="rouletteForms">
+
+            <div class="rouletteForm">
+
+                <label for="rouletteName">TU NOMBRE</label>
+
+                <input
+                    id="rouletteName"
+                    class="rouletteInput"
+                    maxlength="20"
+                    placeholder="Álber"
+                    autocomplete="off"
+                >
+
+            </div>
+
+            <div class="rouletteForm">
+
+                <label for="rouletteCode">CÓDIGO DE SALA</label>
+
+                <div class="rouletteRow">
+
+                    <input
+                        id="rouletteCode"
+                        class="rouletteInput"
+                        maxlength="5"
+                        placeholder="ABC12"
+                        autocomplete="off"
+                    >
+
+                    <button id="rouletteJoin" class="rouletteButton secondary" type="button">
+                        UNIRSE
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <button id="rouletteCreate" class="rouletteButton" type="button">
+            CREAR SALA <span aria-hidden="true">↗</span>
+        </button>
+
+    </section>
+
+
+    <!-- =====================================================
+         SALA
+    ====================================================== -->
+
+    <section id="rouletteRoom" class="rouletteView hidden">
+
+        <div class="rouletteRoomTop">
+
+            <div>
+                <span class="rouletteEyebrow">CÓDIGO</span>
+                <div id="rouletteRoomCode" class="rouletteCode">-----</div>
+                <button id="rouletteCopy" class="rouletteLink" type="button">
+                    Copiar código
+                </button>
+            </div>
+
+            <div class="rouletteSlots">
+                <span class="rouletteEyebrow">JUGADORES</span>
+                <div id="rouletteCount" class="rouletteCount">1/10</div>
+            </div>
+
+        </div>
+
+        <div class="rouletteRoomGrid">
+
+            <div class="rouletteColumn">
+                <h2>En la sala</h2>
+                <div id="roulettePlayers" class="roulettePlayers"></div>
+            </div>
+
+            <div class="rouletteColumn">
+
+                <h2>Tu playlist</h2>
+
+                <p id="roulettePlaylistStatus" class="rouletteStatus">
+                    Elige una playlist. Nadie verá cuál es.
+                </p>
+
+                <div id="roulettePlaylists" class="roulettePlaylists"></div>
+
+            </div>
+
+        </div>
+
+        <div class="rouletteRoomFooter">
+
+            <span id="rouletteHint" class="rouletteStatus">
+                Esperando a que todos elijan.
+            </span>
+
+            <button id="rouletteStart" class="rouletteButton" type="button" disabled>
+                EMPEZAR PARTIDA <span aria-hidden="true">↗</span>
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         RONDA
+    ====================================================== -->
+
+    <section id="rouletteGame" class="rouletteView hidden">
+
+        <div class="rouletteGameTop">
+
+            <div>
+                <span class="rouletteEyebrow">RONDA</span>
+                <div id="rouletteRound" class="rouletteRound">1/5</div>
+            </div>
+
+            <div class="rouletteTimerBox">
+                <span class="rouletteEyebrow">SEGUNDOS</span>
+                <div id="rouletteTimer" class="rouletteTimer">15.0</div>
+            </div>
+
+        </div>
+
+        <div id="rouletteCovers" class="rouletteCovers"></div>
+
+        <p id="rouletteQuestion" class="rouletteQuestion">
+            ¿De quién es esta música?
+        </p>
+
+        <div id="rouletteAnswers" class="rouletteAnswers"></div>
+
+    </section>
+
+
+    <!-- =====================================================
+         RESULTADO DE RONDA
+    ====================================================== -->
+
+    <section id="rouletteResults" class="rouletteView hidden">
+
+        <span class="rouletteEyebrow">RESULTADO</span>
+
+        <h2 id="rouletteOwner" class="rouletteBig">—</h2>
+
+        <div id="rouletteScores" class="rouletteScores"></div>
+
+    </section>
+
+
+    <!-- =====================================================
+         FINAL
+    ====================================================== -->
+
+    <section id="rouletteFinal" class="rouletteView hidden">
+
+        <span class="rouletteEyebrow">CLASIFICACIÓN FINAL</span>
+
+        <h2 id="rouletteWinner" class="rouletteBig">—</h2>
+
+        <div id="rouletteFinalScores" class="rouletteScores"></div>
+
+        <button id="rouletteAgain" class="rouletteButton" type="button">
+            OTRA PARTIDA <span aria-hidden="true">↗</span>
+        </button>
+
+    </section>
+
+</div>

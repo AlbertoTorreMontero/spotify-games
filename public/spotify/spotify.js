@@ -1,6 +1,29 @@
+/* =========================================================
+   BEATPLAY — REPRODUCTOR (Web Playback SDK)
+   Mismos nombres que antes. Ahora la inicialización espera
+   de verdad a que el SDK cargue y a que llegue "ready".
+   Requiere Spotify Premium.
+========================================================= */
+
 let spotifyPlayer = null;
 let spotifyDeviceId = null;
 let spotifyReady = null;
+
+let resolveDevice = null;
+
+// El SDK invoca esta función cuando termina de cargarse.
+const sdkLoaded = new Promise(resolve => {
+
+    if (window.Spotify?.Player) {
+        resolve();
+        return;
+    }
+
+    window.onSpotifyWebPlaybackSDKReady = () => {
+        console.log("Spotify Web Playback SDK cargado");
+        resolve();
+    };
+});
 
 
 // =====================================================
@@ -10,8 +33,13 @@ let spotifyReady = null;
 function initSpotify() {
 
     if (!spotifyReady) {
-        spotifyReady =
-            initializeSpotify();
+
+        spotifyReady = initializeSpotify();
+
+        // Si falla, permitimos reintentar más tarde.
+        spotifyReady.catch(() => {
+            spotifyReady = null;
+        });
     }
 
     return spotifyReady;
@@ -20,181 +48,138 @@ function initSpotify() {
 
 async function initializeSpotify() {
 
-    if (
-        !window.Spotify ||
-        typeof window.Spotify.Player !==
-            "function"
-    ) {
-        throw new Error(
-            "Spotify Web Playback SDK no está cargado."
-        );
+    const token = await getSpotifyToken();
+
+    await sdkLoaded;
+
+    if (typeof window.Spotify?.Player !== "function") {
+        throw new Error("Spotify Web Playback SDK no está disponible.");
     }
 
-    const token =
-        await getSpotifyToken();
+    const devicePromise = new Promise((resolve, reject) => {
 
-    const player =
-        new window.Spotify.Player({
-            name: "Spotify Games",
-            getOAuthToken: callback =>
-                callback(token),
-            volume: 0.5
-        });
+        resolveDevice = resolve;
+
+        setTimeout(
+            () => reject(new Error("El reproductor de Spotify tardó demasiado.")),
+            15000
+        );
+    });
+
+    const player = new window.Spotify.Player({
+        name: "BeatPlay",
+        volume: 0.5,
+
+        // Se vuelve a pedir el token cada vez que el SDK lo necesita,
+        // así una sesión larga no se queda sin autorización.
+        getOAuthToken: callback => {
+            getSpotifyToken({ force: true })
+                .then(callback)
+                .catch(error => console.error("Spotify token:", error));
+        }
+    });
 
     spotifyPlayer = player;
 
 
-    // Player listo
+    // Dispositivo listo
 
-    player.addListener(
-        "ready",
-        async ({ device_id }) => {
+    player.addListener("ready", async ({ device_id }) => {
 
-            spotifyDeviceId =
-                device_id;
+        spotifyDeviceId = device_id;
 
-            try {
-
-                const response =
-                    await fetch(
-                        "/api/transfer",
-                        {
-                            method: "PUT",
-                            headers: {
-                                "Content-Type":
-                                    "application/json"
-                            },
-                            body:
-                                JSON.stringify({
-                                    deviceId:
-                                        device_id
-                                })
-                        }
-                    );
-
-                if (!response.ok) {
-
-                    console.error(
-                        "Error transfiriendo Spotify:",
-                        await response.text()
-                    );
-                }
-
-            } catch (error) {
-
-                console.error(
-                    "Error transfiriendo Spotify:",
-                    error
-                );
-            }
+        try {
+            await transferPlayback(device_id);
+        } catch (error) {
+            console.error("Transferencia:", error.message);
         }
-    );
+
+        resolveDevice?.(device_id);
+    });
+
+
+    player.addListener("not_ready", ({ device_id }) => {
+        if (spotifyDeviceId === device_id) {
+            spotifyDeviceId = null;
+        }
+    });
 
 
     // Estado de reproducción
 
-    player.addListener(
-        "player_state_changed",
-        state => {
-
-            if (
-                typeof window
-                    .onSpotifyGameStateChanged ===
-                "function"
-            ) {
-                window.onSpotifyGameStateChanged(
-                    state
-                );
-            }
-        }
-    );
-
-
-    // Player no disponible
-
-    player.addListener(
-        "not_ready",
-        ({ device_id }) => {
-
-            if (
-                spotifyDeviceId ===
-                device_id
-            ) {
-                spotifyDeviceId = null;
-            }
-        }
-    );
+    player.addListener("player_state_changed", state => {
+        window.onSpotifyGameStateChanged?.(state);
+    });
 
 
     // Errores
 
-    const logError =
-        (type, message) =>
-            console.error(
-                `Spotify ${type}:`,
-                message
-            );
+    const logError = (type, message) =>
+        console.error(`Spotify ${type}:`, message);
 
-    player.addListener(
-        "initialization_error",
-        ({ message }) =>
-            logError(
-                "initialization",
-                message
-            )
+    player.addListener("initialization_error", ({ message }) =>
+        logError("initialization", message)
     );
 
-    player.addListener(
-        "authentication_error",
-        ({ message }) =>
-            logError(
-                "authentication",
-                message
-            )
+    player.addListener("authentication_error", ({ message }) =>
+        logError("authentication", message)
     );
 
-    player.addListener(
-        "account_error",
-        ({ message }) =>
-            logError(
-                "account",
-                message
-            )
+    player.addListener("account_error", () =>
+        logError("account", "El reproductor necesita Spotify Premium.")
     );
 
-    player.addListener(
-        "playback_error",
-        ({ message }) =>
-            logError(
-                "playback",
-                message
-            )
+    player.addListener("playback_error", ({ message }) =>
+        logError("playback", message)
     );
 
 
-    const connected =
-        await player.connect();
+    const connected = await player.connect();
 
     if (!connected) {
-        throw new Error(
-            "No se pudo conectar con Spotify."
-        );
+        throw new Error("No se pudo conectar con Spotify.");
     }
 
-    return player;
+    const deviceId = await devicePromise;
+
+    return {
+        player,
+        deviceId,
+        ready: true,
+        label: "REPRODUCTOR LISTO"
+    };
 }
 
 
 // =====================================================
-// SDK
+// LLAMADAS AL SERVIDOR
 // =====================================================
 
-window.onSpotifyWebPlaybackSDKReady =
-    () => {
-        console.log(
-            "Spotify Web Playback SDK cargado"
-        );
-    };
+async function playbackRequest(url, body) {
+
+    const response = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body || {})
+    });
+
+    if (response.ok || response.status === 204) return;
+
+    let message = "Error de reproducción.";
+
+    try {
+        message = (await response.json()).error || message;
+    } catch {
+        /* respuesta sin cuerpo */
+    }
+
+    throw new Error(message);
+}
+
+
+function transferPlayback(deviceId) {
+    return playbackRequest("/api/transfer", { deviceId });
+}
 
 
 // =====================================================
@@ -206,9 +191,7 @@ async function waitForSpotify() {
     await initSpotify();
 
     if (!spotifyDeviceId) {
-        throw new Error(
-            "Spotify Player no está listo."
-        );
+        throw new Error("El reproductor de Spotify no está listo.");
     }
 
     return spotifyDeviceId;
@@ -219,110 +202,82 @@ async function waitForSpotify() {
 // REPRODUCCIÓN
 // =====================================================
 
-async function playSpotifyTrack(
-    trackUri
-) {
+async function playSpotifyTrack(trackUri, positionMs = 0) {
 
     if (!trackUri) {
-        throw new Error(
-            "Falta URI de la canción."
-        );
+        throw new Error("Falta la URI de la canción.");
     }
 
-    const deviceId =
-        await waitForSpotify();
+    const deviceId = await waitForSpotify();
 
-    const response =
-        await fetch(
-            "/api/play",
-            {
-                method: "PUT",
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
-                body:
-                    JSON.stringify({
-                        deviceId,
-                        trackUri
-                    })
-            }
-        );
-
-    if (!response.ok) {
-
-        const error =
-            await response.text();
-
-        throw new Error(
-            error ||
-            "Error reproduciendo canción."
-        );
-    }
+    await playbackRequest("/api/play", { deviceId, trackUri, positionMs });
 }
 
 
 async function pauseSpotify() {
 
+    if (!spotifyDeviceId) return;
+
     try {
-
-        await fetch(
-            "/api/pause",
-            {
-                method: "PUT"
-            }
-        );
-
+        await playbackRequest("/api/pause");
     } catch (error) {
-
-        console.error(
-            "Error pausando Spotify:",
-            error
-        );
+        console.warn("Pausa:", error.message);
     }
 }
 
 
 // =====================================================
-// CONTROLES
+// CONTROLES DEL SDK
 // =====================================================
 
 async function spotifyResume() {
-    return (
-        await initSpotify()
-    ).resume();
+    await initSpotify();
+    return spotifyPlayer.resume();
 }
 
 
 async function spotifyPause() {
-    return (
-        await initSpotify()
-    ).pause();
+    await initSpotify();
+    return spotifyPlayer.pause();
 }
 
 
 async function spotifyTogglePlay() {
-    return (
-        await initSpotify()
-    ).togglePlay();
+    await initSpotify();
+    return spotifyPlayer.togglePlay();
 }
 
 
 async function spotifySeek(positionMs) {
-
-    return (
-        await initSpotify()
-    ).seek(
-        Math.round(positionMs)
-    );
+    await initSpotify();
+    return spotifyPlayer.seek(Math.round(positionMs));
 }
 
 
 async function spotifyGetState() {
-
-    if (!spotifyPlayer) {
-        return null;
-    }
-
-    return spotifyPlayer.getCurrentState();
+    return spotifyPlayer ? spotifyPlayer.getCurrentState() : null;
 }
+
+
+function getDeviceId() {
+    return spotifyDeviceId;
+}
+
+
+// =====================================================
+// EXPORTS
+// =====================================================
+
+window.initSpotify = initSpotify;
+window.waitForSpotify = waitForSpotify;
+window.playSpotifyTrack = playSpotifyTrack;
+window.pauseSpotify = pauseSpotify;
+window.spotifyResume = spotifyResume;
+window.spotifyPause = spotifyPause;
+window.spotifyTogglePlay = spotifyTogglePlay;
+window.spotifySeek = spotifySeek;
+window.spotifyGetState = spotifyGetState;
+window.getDeviceId = getDeviceId;
+
+// Alias corto
+window.playTrack = playSpotifyTrack;

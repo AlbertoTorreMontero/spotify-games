@@ -1,91 +1,111 @@
-let selectedGame = "snake";
+/* =========================================================
+   BEATPLAY — CONTROLADOR DE LA APP
+========================================================= */
 
 const $ = id => document.getElementById(id);
 
+const state = {
+    game: "snake",
+    busy: false
+};
+
+const htmlCache = new Map();
+
 
 // =====================================================
-// NAVEGACIÓN
+// UTILIDADES DE INTERFAZ
 // =====================================================
 
 function showScreen(id) {
+
     document
         .querySelectorAll(".screen")
-        .forEach(screen =>
-            screen.classList.add("hidden")
-        );
+        .forEach(screen => screen.classList.toggle("hidden", screen.id !== id));
 
-    $(id)?.classList.remove("hidden");
+    window.scrollTo({ top: 0 });
 }
 
+function toast(message) {
 
-async function loadGameHTML(path, containerId) {
+    let element = document.querySelector(".toast");
+
+    if (!element) {
+        element = document.createElement("div");
+        element.className = "toast";
+        element.setAttribute("role", "status");
+        document.body.appendChild(element);
+    }
+
+    element.textContent = message;
+    element.classList.add("show");
+
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => element.classList.remove("show"), 4500);
+}
+
+// Los juegos cargados dinámicamente también avisan por aquí.
+window.beatplayToast = toast;
+
+function setStatus(text, online = false) {
+
+    const status = $("appStatus");
+
+    if (!status) return;
+
+    status.textContent = text;
+    status.classList.toggle("online", online);
+}
+
+async function loadGameHTML(url, containerId) {
+
     const container = $(containerId);
 
     if (!container) {
-        throw new Error(
-            `No existe #${containerId}`
-        );
+        throw new Error(`Falta el contenedor #${containerId} en index.html.`);
     }
 
-    const response = await fetch(path);
+    if (!htmlCache.has(url)) {
 
-    if (!response.ok) {
-        throw new Error(
-            `No se pudo cargar ${path}`
-        );
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            throw new Error(`No se pudo cargar ${url}.`);
+        }
+
+        htmlCache.set(url, await response.text());
     }
 
-    container.innerHTML =
-        await response.text();
+    container.innerHTML = htmlCache.get(url);
+}
+
+function requireFunction(name) {
+
+    if (typeof window[name] !== "function") {
+        throw new Error(`${name} no está definido.`);
+    }
+
+    return window[name];
 }
 
 
 // =====================================================
-// PLAYLIST
+// PLAYLISTS
 // =====================================================
 
-function getPlaylist() {
+function currentPlaylist() {
     return typeof getSelectedPlaylist === "function"
         ? getSelectedPlaylist()
         : null;
 }
 
+async function fetchTracks(playlistId, minimum, label) {
 
-function gameNeedsPlaylist() {
-    return (
-        selectedGame === "snake" ||
-        selectedGame === "bingo" ||
-        selectedGame === "hipster-user"
-    );
-}
+    const tracks = await requireFunction("getPlaylistTracks")(playlistId);
 
-
-async function getTracks() {
-    const playlist = getPlaylist();
-
-    if (!playlist) {
+    if (tracks.length < minimum) {
         throw new Error(
-            "No hay playlist seleccionada."
-        );
-    }
-
-    if (
-        typeof getPlaylistTracks !==
-        "function"
-    ) {
-        throw new Error(
-            "getPlaylistTracks no está disponible."
-        );
-    }
-
-    const tracks =
-        await getPlaylistTracks(
-            playlist.id
-        );
-
-    if (!Array.isArray(tracks)) {
-        throw new Error(
-            "Respuesta de canciones inválida."
+            `${label} necesita al menos ${minimum} canciones reproducibles. ` +
+            `Esta playlist tiene ${tracks.length}.`
         );
     }
 
@@ -94,465 +114,251 @@ async function getTracks() {
 
 
 // =====================================================
+// JUEGOS DISPONIBLES
+// =====================================================
+
+const GAMES = {
+
+    snake: {
+        label: "EMPEZAR SNAKE",
+        loading: "CARGANDO SNAKE…",
+        screen: "gameScreen",
+        container: "snakeContainer",
+        html: "/snake/snake.html",
+        needsPlaylist: true,
+        prepare: playlist => fetchTracks(playlist.id, 1, "Snake"),
+        run: (playlist, tracks) =>
+            requireFunction("startSnake")(tracks, playlist.name)
+    },
+
+    bingo: {
+        label: "CREAR BINGO",
+        loading: "CARGANDO BINGO…",
+        screen: "bingoScreen",
+        container: "bingoContainer",
+        html: "/bingo/bingo.html",
+        needsPlaylist: true,
+        prepare: playlist => fetchTracks(playlist.id, 15, "El bingo"),
+        run: (playlist, tracks) =>
+            requireFunction("startBingo")(tracks, playlist.name)
+    },
+
+    "hipster-user": {
+        label: "EMPEZAR HIPSTER",
+        loading: "CARGANDO HIPSTER…",
+        screen: "hipsterScreen",
+        container: "hipsterContainer",
+        html: "/hipster/hipster.html",
+        needsPlaylist: true,
+        run: playlist =>
+            requireFunction("startHipster")({ mode: "user", playlist })
+    },
+
+    "hipster-global": {
+        label: "EMPEZAR HIPSTER GLOBAL",
+        loading: "CARGANDO HIPSTER GLOBAL…",
+        screen: "hipsterScreen",
+        container: "hipsterContainer",
+        html: "/hipster/hipster.html",
+        needsPlaylist: false,
+        run: () =>
+            requireFunction("startHipster")({ mode: "global", playlist: null })
+    },
+
+    // Multijugador: cada jugador elige su playlist dentro de la sala,
+    // así que aquí no hace falta ninguna selección previa.
+    roulette: {
+        label: "ENTRAR EN MUSIC ROULETTE",
+        loading: "CONECTANDO…",
+        screen: "rouletteScreen",
+        container: "rouletteContainer",
+        html: "/roulette/roulette.html",
+        needsPlaylist: false,
+        selectedText: "Sala privada con tus amigos",
+        run: () => requireFunction("startRoulette")()
+    }
+};
+
+
+// =====================================================
 // BOTÓN PRINCIPAL
 // =====================================================
 
 function updateStartButton() {
+
     const button = $("startButton");
-    const selectedText = $("selectedText");
+    const label = $("startLabel");
+    const selected = $("selectedText");
+    const section = $("playlistSection");
 
-    if (!button) return;
+    const game = GAMES[state.game];
+    const playlist = currentPlaylist();
 
-    const playlist = getPlaylist();
-
-    button.disabled =
-        gameNeedsPlaylist() &&
-        !playlist;
-
-    switch (selectedGame) {
-        case "snake":
-            button.textContent = "Empezar Snake";
-            break;
-
-        case "bingo":
-            button.textContent = "Crear Bingo";
-            break;
-
-        case "hipster-user":
-            button.textContent = "Empezar Hipster";
-            break;
-
-        case "hipster-global":
-            button.textContent =
-                "Empezar Hipster Global";
-            break;
-
-        default:
-            button.textContent = "Empezar";
+    if (section) {
+        section.classList.toggle("hidden", !game.needsPlaylist);
     }
 
-    if (!selectedText) return;
+    if (label) {
+        label.textContent = state.busy ? game.loading : game.label;
+    }
 
-    if (selectedGame === "hipster-global") {
-        selectedText.textContent =
-            "Playlist oficial de Hipster";
-    } else if (!playlist) {
-        selectedText.textContent =
-            "Selecciona una playlist";
+    if (button) {
+        button.disabled = state.busy || (game.needsPlaylist && !playlist);
+    }
+
+    if (selected) {
+        if (!game.needsPlaylist) {
+            selected.textContent =
+                game.selectedText || "Playlist oficial de Hipster";
+        } else if (playlist) {
+            selected.textContent =
+                `${playlist.name} — ${playlist.tracks} canciones`;
+        } else {
+            selected.textContent = "Elige una playlist";
+        }
     }
 }
 
+window.updateStartButton = updateStartButton;
+
 
 // =====================================================
-// JUEGOS
+// SELECTOR DE JUEGO
 // =====================================================
 
 function initGameSelector() {
 
-    document
-        .querySelectorAll(".gameCard")
-        .forEach(card => {
+    const cards = document.querySelectorAll(".game-card[data-game]");
 
-            card.addEventListener(
-                "click",
-                () => {
+    cards.forEach(card => {
 
-                    selectedGame =
-                        card.dataset.game;
+        card.addEventListener("click", () => {
 
-                    document
-                        .querySelectorAll(".gameCard")
-                        .forEach(item =>
-                            item.classList.toggle(
-                                "selected",
-                                item === card
-                            )
-                        );
+            if (state.busy) return;
 
-                    updateStartButton();
-                }
+            state.game = card.dataset.game;
+
+            cards.forEach(item =>
+                item.classList.toggle("selected", item === card)
             );
+
+            updateStartButton();
         });
+    });
 }
 
 
 // =====================================================
-// SNAKE
+// ARRANQUE DE PARTIDA
 // =====================================================
 
-async function startSnakeGame() {
-    const button = $("startButton");
+async function startGame() {
+
+    if (state.busy) return;
+
+    const game = GAMES[state.game];
+    const playlist = currentPlaylist();
+
+    if (game.needsPlaylist && !playlist) {
+        toast("Elige una playlist antes de empezar.");
+        return;
+    }
+
+    state.busy = true;
+    updateStartButton();
 
     try {
-        button.disabled = true;
-        button.textContent = "Cargando Snake...";
+        const data = game.prepare ? await game.prepare(playlist) : null;
 
-        const playlist = getPlaylist();
+        await loadGameHTML(game.html, game.container);
 
-        if (!playlist) {
-            throw new Error(
-                "Selecciona una playlist."
-            );
-        }
+        showScreen(game.screen);
 
-        const tracks =
-            await getTracks();
-
-        if (!tracks.length) {
-            throw new Error(
-                "Esta playlist no tiene canciones reproducibles."
-            );
-        }
-
-        await loadGameHTML(
-            "/snake/snake.html",
-            "snakeContainer"
-        );
-
-        showScreen("gameScreen");
-
-        if (
-            typeof startSnake !==
-            "function"
-        ) {
-            throw new Error(
-                "startSnake no está definido."
-            );
-        }
-
-        startSnake(
-            tracks,
-            playlist.name
-        );
+        await game.run(playlist, data);
 
     } catch (error) {
-
-        console.error(
-            "Snake:",
-            error
-        );
-
-        alert(
-            error.message ||
-            "No se pudo iniciar Snake."
-        );
-
+        console.error(`[${state.game}]`, error);
+        toast(error.message || "No se pudo iniciar el juego.");
         showScreen("menuScreen");
 
     } finally {
+        state.busy = false;
         updateStartButton();
     }
 }
 
 
 // =====================================================
-// BINGO
+// SALIR DE UN JUEGO
 // =====================================================
 
-async function startBingoGame() {
-    const button = $("startButton");
+const EXIT_BUTTONS = {
+    exitGameButton: ["stopSnake"],
+    exitBingoButton: ["stopBingo"],
+    exitHipsterButton: ["stopHipster"],
+    exitRouletteButton: ["stopRoulette"]
+};
 
-    try {
-        button.disabled = true;
-        button.textContent = "Cargando Bingo...";
+document.addEventListener("click", async event => {
 
-        const playlist = getPlaylist();
+    const button = event.target.closest(
+        Object.keys(EXIT_BUTTONS).map(id => `#${id}`).join(", ")
+    );
 
-        if (!playlist) {
-            throw new Error(
-                "Selecciona una playlist."
-            );
-        }
+    if (!button) return;
 
-        const tracks =
-            await getTracks();
-
-        if (tracks.length < 15) {
-            throw new Error(
-                `Necesitas al menos 15 canciones. Esta playlist tiene ${tracks.length}.`
-            );
-        }
-
-        await loadGameHTML(
-            "/bingo/bingo.html",
-            "bingoContainer"
-        );
-
-        showScreen("bingoScreen");
-
-        if (
-            typeof startBingo !==
-            "function"
-        ) {
-            throw new Error(
-                "startBingo no está definido."
-            );
-        }
-
-        startBingo(
-            tracks,
-            playlist.name
-        );
-
-    } catch (error) {
-
-        console.error(
-            "Bingo:",
-            error
-        );
-
-        alert(
-            error.message ||
-            "No se pudo iniciar Bingo."
-        );
-
-        showScreen("menuScreen");
-
-    } finally {
-        updateStartButton();
+    for (const name of EXIT_BUTTONS[button.id]) {
+        if (typeof window[name] === "function") window[name]();
     }
-}
 
-
-// =====================================================
-// HIPSTER
-// =====================================================
-
-async function startHipsterGame(mode) {
-    const button = $("startButton");
-
-    try {
-        button.disabled = true;
-
-        button.textContent =
-            mode === "global"
-                ? "Cargando Hipster Global..."
-                : "Cargando Hipster...";
-
-        const playlist =
-            mode === "user"
-                ? getPlaylist()
-                : null;
-
-        if (
-            mode === "user" &&
-            !playlist
-        ) {
-            throw new Error(
-                "Selecciona una playlist."
-            );
-        }
-
-        await loadGameHTML(
-            "/hipster/hipster.html",
-            "hipsterContainer"
-        );
-
-        showScreen(
-            "hipsterScreen"
-        );
-
-        if (
-            typeof startHipster !==
-            "function"
-        ) {
-            throw new Error(
-                "startHipster no está definido."
-            );
-        }
-
-        await startHipster({
-            mode,
-            playlist
-        });
-
-    } catch (error) {
-
-        console.error(
-            "Hipster:",
-            error
-        );
-
-        alert(
-            error.message ||
-            "No se pudo iniciar Hipster."
-        );
-
-        showScreen(
-            "menuScreen"
-        );
-
-    } finally {
-        updateStartButton();
+    if (typeof pauseSpotify === "function") {
+        await pauseSpotify().catch(() => {});
     }
-}
+
+    showScreen("menuScreen");
+    updateStartButton();
+});
 
 
 // =====================================================
-// INICIO
+// SESIÓN
 // =====================================================
 
-$("startButton")?.addEventListener(
-    "click",
-    async () => {
+async function enterBeatplay() {
 
-        switch (selectedGame) {
+    initGameSelector();
+    updateStartButton();
 
-            case "snake":
-                await startSnakeGame();
-                break;
+    const authenticated =
+        typeof isAuthenticated === "function" ? await isAuthenticated() : false;
 
-            case "bingo":
-                await startBingoGame();
-                break;
-
-            case "hipster-user":
-                await startHipsterGame("user");
-                break;
-
-            case "hipster-global":
-                await startHipsterGame("global");
-                break;
-        }
-    }
-);
-
-
-// =====================================================
-// SALIR
-// =====================================================
-
-document.addEventListener(
-    "click",
-    async event => {
-
-        if (
-            event.target.closest(
-                "#exitGameButton"
-            )
-        ) {
-
-            if (
-                typeof stopSnake ===
-                "function"
-            ) {
-                stopSnake();
-            }
-
-            if (
-                typeof pauseSpotify ===
-                "function"
-            ) {
-                await pauseSpotify();
-            }
-
-            showScreen("menuScreen");
-            updateStartButton();
-
-            return;
-        }
-
-
-        if (
-            event.target.closest(
-                "#exitBingoButton"
-            )
-        ) {
-
-            showScreen("menuScreen");
-            updateStartButton();
-
-            return;
-        }
-
-
-        if (
-            event.target.closest(
-                "#exitHipsterButton"
-            )
-        ) {
-
-            if (
-                typeof stopHipster ===
-                "function"
-            ) {
-                stopHipster();
-            }
-
-            if (
-                typeof pauseSpotify ===
-                "function"
-            ) {
-                await pauseSpotify();
-            }
-
-            showScreen("menuScreen");
-            updateStartButton();
-        }
-    }
-);
-
-
-// =====================================================
-// LOGIN
-// =====================================================
-
-async function checkLogin() {
-
-    try {
-
-        const response =
-            await fetch(
-                "/auth/token"
-            );
-
-        if (!response.ok) {
-            showScreen("loginScreen");
-            return;
-        }
-
-        showScreen("menuScreen");
-
-        if (
-            typeof loadPlaylists !==
-            "function"
-        ) {
-            throw new Error(
-                "loadPlaylists no está definido."
-            );
-        }
-
-        await loadPlaylists();
-        updateStartButton();
-
-        if (
-            typeof initSpotify ===
-            "function"
-        ) {
-            initSpotify().catch(
-                error =>
-                    console.error(
-                        "Spotify:",
-                        error
-                    )
-            );
-        }
-
-    } catch (error) {
-
-        console.error(
-            "Inicio:",
-            error
-        );
-
+    if (!authenticated) {
         showScreen("loginScreen");
+        return;
+    }
+
+    showScreen("menuScreen");
+
+    try {
+        await requireFunction("loadPlaylists")();
+    } catch (error) {
+        console.error("Playlists:", error);
+        toast(error.message || "No se pudieron cargar tus playlists.");
+        setStatus("SPOTIFY RECHAZÓ LA PETICIÓN");
+    }
+
+    updateStartButton();
+
+    if (typeof initSpotify === "function") {
+        initSpotify()
+            .then(info => setStatus(info.label, info.ready))
+            .catch(error => {
+                console.error("Spotify:", error);
+                setStatus("REPRODUCTOR NO DISPONIBLE");
+            });
     }
 }
 
+$("startButton")?.addEventListener("click", startGame);
 
-// =====================================================
-// ARRANQUE
-// =====================================================
-
-initGameSelector();
-checkLogin();
+enterBeatplay();

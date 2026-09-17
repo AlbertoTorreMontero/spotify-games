@@ -1,30 +1,56 @@
-* {
+@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;700&display=swap");
+
+/* =========================================================
+   BEATPLAY — APP
+========================================================= */
+
+*,
+*::before,
+*::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
 }
 
-html,
-body {
-    width: 100%;
-    min-height: 100%;
+:root {
+    --black: #0a0a0a;
+    --black-soft: #111111;
+    --white: #f1f0eb;
+    --grey: #858582;
+    --line: #292929;
+    --accent: #8b78a5;
+
+    --mono: "DM Mono", ui-monospace, monospace;
+    --display: "Bebas Neue", Impact, sans-serif;
+    --serif: "Instrument Serif", Georgia, serif;
+    --sans: "Space Grotesk", system-ui, sans-serif;
+}
+
+html {
+    scroll-behavior: smooth;
 }
 
 body {
-    min-height: 100vh;
-    background: #080808;
-    color: #fff;
-    font-family: Arial, sans-serif;
+    background: var(--black);
+    color: var(--white);
+    font-family: var(--sans);
+    overflow-x: hidden;
 }
 
 button,
-input,
-select {
-    font: inherit;
+a {
+    font-family: inherit;
+    color: inherit;
 }
 
 button {
-    cursor: pointer;
+    border: 0;
+    background: none;
+}
+
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
 }
 
 .hidden {
@@ -32,308 +58,457 @@ button {
 }
 
 .screen {
-    width: 100%;
     min-height: 100vh;
 }
 
-
-/* Texto */
-
-.eyebrow {
-    display: block;
-    color: #1db954;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 3px;
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
+        animation: none !important;
+    }
 }
 
 
-/* Botones */
+/* =========================================================
+   LOGIN
+========================================================= */
 
-.primaryButton,
-.secondaryButton {
-    height: 42px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 18px;
-    border: 0;
-    border-radius: 8px;
-    font-weight: 700;
-    text-decoration: none;
-    transition: background .15s, transform .15s;
-}
-
-.primaryButton {
-    background: #1db954;
-    color: #fff;
-}
-
-.primaryButton:hover {
-    background: #1ed760;
-}
-
-.primaryButton:active {
-    transform: scale(.98);
-}
-
-.secondaryButton {
-    background: #292929;
-    color: #fff;
-}
-
-.secondaryButton:hover {
-    background: #353535;
-}
-
-button:disabled {
-    opacity: .35;
-    cursor: not-allowed;
-}
-
-
-/* Login */
-
-#loginScreen {
+.login-screen {
+    min-height: 100vh;
     display: flex;
-    align-items: center;
     justify-content: center;
+    align-items: center;
     padding: 30px;
 }
 
-.loginBox {
-    width: min(430px, 100%);
-    padding: 45px;
-    background: #121212;
-    border: 1px solid #242424;
-    border-radius: 18px;
-    text-align: center;
-    box-shadow: 0 25px 80px rgba(0, 0, 0, .45);
+.login-container {
+    width: min(600px, 100%);
 }
 
-.loginBox h1 {
-    margin: 12px 0;
-    font-size: 42px;
-}
-
-.loginBox p {
+.login-eyebrow {
+    display: block;
     margin-bottom: 30px;
-    color: #777;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
 }
 
-
-/* Menú */
-
-#menuScreen {
-    padding: 40px;
+.login-container h1 {
+    margin-bottom: 30px;
+    font-family: var(--display);
+    font-size: clamp(70px, 12vw, 150px);
+    font-weight: 400;
+    line-height: 0.75;
 }
 
-.menuHeader {
-    max-width: 1200px;
-    margin: 0 auto 30px;
-}
-
-.menuHeader h1 {
-    margin: 8px 0;
-    font-size: 42px;
-}
-
-.menuHeader p {
-    color: #777;
-}
-
-
-/* Juegos */
-
-.gameSelector {
-    max-width: 1200px;
-    margin: 0 auto 40px;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 15px;
-}
-
-.gameCard {
-    min-height: 150px;
-    padding: 25px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 8px;
-
-    background: #121212;
-    color: #fff;
-    border: 1px solid #242424;
-    border-radius: 14px;
-
-    text-align: left;
-
-    transition:
-        border-color .15s,
-        background .15s,
-        transform .15s;
-}
-
-.gameCard:hover {
-    background: #171717;
-    transform: translateY(-2px);
-}
-
-.gameCard.selected {
-    border-color: #1db954;
-    background: #151a16;
-}
-
-.gameIcon {
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: 1px;
-}
-
-.gameCard strong {
-    font-size: 19px;
-}
-
-.gameCard small {
-    color: #777;
-}
-
-
-/* Playlists */
-
-.playlistHeader {
-    max-width: 1200px;
-    margin: 0 auto 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-}
-
-.playlistHeader h2 {
-    margin-top: 6px;
+.login-container p {
+    max-width: 450px;
+    margin-bottom: 35px;
+    color: var(--grey);
+    font-family: var(--serif);
     font-size: 25px;
+    line-height: 1.15;
 }
 
-#playlistStatus {
-    color: #777;
-    font-size: 13px;
+.spotify-login-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 50px;
+    padding: 18px 22px;
+    background: var(--white);
+    color: var(--black);
+    text-decoration: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    transition: background 0.2s ease, color 0.2s ease;
 }
 
-.playlistGrid {
-    max-width: 1200px;
-    margin: 0 auto 25px;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 15px;
+.spotify-login-button:hover {
+    background: var(--accent);
+    color: var(--white);
 }
 
-.playlist {
-    padding: 12px;
-    background: #121212;
-    border: 1px solid #242424;
-    border-radius: 12px;
-    color: #fff;
-    text-align: left;
-    overflow: hidden;
-
-    transition:
-        border-color .15s,
-        background .15s;
-}
-
-.playlist:hover {
-    background: #171717;
-}
-
-.playlist.selected {
-    border-color: #1db954;
-}
-
-.playlist img {
-    display: block;
-    width: 100%;
-    aspect-ratio: 1;
-    margin-bottom: 10px;
-    border-radius: 8px;
-    object-fit: cover;
-    background: #1c1c1c;
-}
-
-.playlistName {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    font-weight: 700;
-}
-
-.playlistTracks {
-    display: block;
-    margin-top: 4px;
-    color: #777;
-    font-size: 12px;
+.spotify-login-button span {
+    font-size: 18px;
 }
 
 
-/* Footer */
+/* =========================================================
+   ESTRUCTURA
+========================================================= */
 
-.menuFooter {
-    position: sticky;
-    bottom: 0;
-    max-width: 1200px;
+.app-container {
+    width: min(1400px, 90vw);
     margin: 0 auto;
-    padding: 15px 0;
+    padding: 30px 0 70px;
+}
 
+.app-header {
+    height: 60px;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    border-bottom: 1px solid var(--line);
+}
 
-    background: #080808;
+.app-logo {
+    font-family: var(--display);
+    font-size: 28px;
+}
+
+.app-logo span {
+    color: var(--accent);
+}
+
+.app-status {
+    color: var(--grey);
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1px;
+}
+
+.app-status.online {
+    color: var(--accent);
+}
+
+.menu-title {
+    padding: 90px 0 60px;
+}
+
+.menu-eyebrow {
+    display: block;
+    margin-bottom: 15px;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+}
+
+.menu-title h1 {
+    font-family: var(--display);
+    font-size: clamp(65px, 11vw, 150px);
+    font-weight: 400;
+    line-height: 0.75;
+}
+
+.menu-title h1 em {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+}
+
+
+/* =========================================================
+   JUEGOS
+========================================================= */
+
+.game-selector {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-top: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+}
+
+.game-card {
+    min-height: 250px;
+    padding: 22px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    text-align: left;
+    background: var(--black);
+    color: var(--white);
+    cursor: pointer;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.game-card:hover,
+.game-card.selected {
+    background: var(--white);
+    color: var(--black);
+}
+
+.game-card-number {
+    position: absolute;
+    top: 22px;
+    left: 22px;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 9px;
+}
+
+.game-card-arrow {
+    position: absolute;
+    top: 22px;
+    right: 22px;
+    font-size: 20px;
+}
+
+.game-card-info {
+    display: block;
+}
+
+.game-card-type {
+    display: block;
+    color: var(--grey);
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1px;
+}
+
+.game-card-title {
+    display: block;
+    margin-top: 12px;
+    font-family: var(--display);
+    font-size: clamp(40px, 3.4vw, 62px);
+    font-weight: 400;
+    line-height: 0.8;
+}
+
+
+/* =========================================================
+   PLAYLISTS
+========================================================= */
+
+.playlist-section {
+    padding: 80px 0 40px;
+}
+
+.playlist-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.playlist-header h2 {
+    font-family: var(--display);
+    font-size: 55px;
+    font-weight: 400;
+    line-height: 0.9;
+}
+
+.playlist-loading {
+    color: var(--grey);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-align: right;
+}
+
+.playlist-grid {
+    margin-top: 30px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.playlist-card {
+    min-height: 220px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    position: relative;
+    text-align: left;
+    background: var(--black-soft);
+    border: 1px solid var(--line);
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.playlist-card:hover {
+    border-color: var(--white);
+    transform: translateY(-3px);
+}
+
+.playlist-card.selected {
+    border-color: var(--accent);
+}
+
+.playlist-card img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.55;
+}
+
+.playlist-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(transparent 30%, rgba(0, 0, 0, 0.9));
+}
+
+.playlist-card-info {
+    position: relative;
+    z-index: 2;
+}
+
+.playlist-card-name {
+    display: block;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.playlist-card-tracks {
+    display: block;
+    margin-top: 5px;
+    color: #aaa;
+    font-family: var(--mono);
+    font-size: 8px;
+}
+
+.playlist-empty {
+    grid-column: 1 / -1;
+    padding: 40px 0;
+    color: var(--grey);
+    font-family: var(--serif);
+    font-size: 22px;
+}
+
+
+/* =========================================================
+   EMPEZAR
+========================================================= */
+
+.start-section {
+    padding-top: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 25px;
+    border-top: 1px solid var(--line);
+}
+
+.selected-label {
+    display: block;
+    color: var(--grey);
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1px;
 }
 
 #selectedText {
-    color: #777;
-    font-size: 13px;
+    margin-top: 8px;
+    font-size: 14px;
+}
+
+.start-button {
+    padding: 18px 25px;
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    background: var(--white);
+    color: var(--black);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.start-button:hover:not(:disabled) {
+    background: var(--accent);
+    color: var(--white);
+}
+
+.start-button:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+}
+
+.start-button span:last-child {
+    font-size: 18px;
 }
 
 
-/* Responsive */
+/* =========================================================
+   AVISOS
+========================================================= */
 
-@media (max-width: 1000px) {
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: 30px;
+    z-index: 100;
+    max-width: min(520px, 88vw);
+    padding: 14px 18px;
+    background: var(--white);
+    color: var(--black);
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1.5;
+    letter-spacing: 0.5px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 15px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
 
-    .gameSelector {
+.toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 900px) {
+
+    .game-selector,
+    .playlist-grid {
         grid-template-columns: repeat(2, 1fr);
     }
 
-    .playlistGrid {
-        grid-template-columns: repeat(3, 1fr);
+    .menu-title {
+        padding: 60px 0 40px;
     }
 }
 
-@media (max-width: 650px) {
+@media (max-width: 600px) {
 
-    #menuScreen {
-        padding: 20px;
+    .app-container {
+        width: calc(100% - 40px);
     }
 
-    .menuHeader h1 {
-        font-size: 32px;
-    }
-
-    .gameSelector,
-    .playlistGrid {
+    .game-selector,
+    .playlist-grid {
         grid-template-columns: 1fr;
     }
 
-    .playlistHeader {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
+    .game-card {
+        min-height: 180px;
     }
 
-    .menuFooter {
+    .playlist-header {
+        align-items: flex-start;
         flex-direction: column;
-        align-items: stretch;
-        gap: 15px;
+    }
+
+    .playlist-loading {
+        text-align: left;
+    }
+
+    .start-section {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .start-button {
+        width: 100%;
+        justify-content: space-between;
     }
 }

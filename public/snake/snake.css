@@ -1,13 +1,19 @@
+/* =========================================================
+   BEATPLAY — SNAKE
+   Mismos selectores, identidad de la landing:
+   negro, hueso, morado. Sin esquinas redondeadas.
+========================================================= */
+
 #gameScreen {
-    background: #080808;
+    background: var(--black, #0a0a0a);
 }
 
 .snakeLayout {
     width: 100%;
     min-height: 100vh;
-    padding: 30px 40px;
-    background: #080808;
-    color: #fff;
+    padding: 30px 5vw 60px;
+    background: var(--black, #0a0a0a);
+    color: var(--white, #f1f0eb);
 }
 
 .gameHeader,
@@ -16,59 +22,80 @@
     margin: 0 auto;
 }
 
+
+/* =========================================================
+   CABECERA
+========================================================= */
+
 .gameHeader {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
     gap: 25px;
-    margin-bottom: 25px;
+    margin-bottom: 30px;
+    padding-bottom: 25px;
+    border-bottom: 1px solid var(--line, #292929);
 }
 
 .gameTitle {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
+    color: var(--grey, #858582);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 8px;
+    letter-spacing: 1.5px;
 }
 
 .gameTitle strong {
-    font-size: 18px;
+    font-family: var(--display, "Bebas Neue", sans-serif);
+    font-size: 40px;
+    font-weight: 400;
+    line-height: 0.8;
+    letter-spacing: 0;
+    color: var(--white, #f1f0eb);
 }
 
 .scoreBox {
-    min-width: 110px;
-    padding: 10px 20px;
-    background: #121212;
-    border: 1px solid #292929;
-    border-radius: 10px;
+    min-width: 120px;
+    padding: 14px 20px;
+    background: var(--black, #0a0a0a);
+    border: 1px solid var(--line, #292929);
     text-align: center;
 }
 
 .scoreBox span {
     display: block;
-    margin-bottom: 3px;
-    color: #777;
-    font-size: 9px;
+    margin-bottom: 6px;
+    color: var(--accent, #8b78a5);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 8px;
     letter-spacing: 2px;
 }
 
 .scoreBox strong {
-    font-size: 24px;
+    font-family: var(--display, "Bebas Neue", sans-serif);
+    font-size: 34px;
+    font-weight: 400;
+    line-height: 0.85;
 }
+
+
+/* PISTA ACTUAL */
 
 .gameTrack {
     min-width: 0;
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 12px;
 }
 
 .gameTrack img {
-    width: 50px;
-    height: 50px;
-    flex: 0 0 50px;
+    width: 52px;
+    height: 52px;
+    flex: 0 0 52px;
     object-fit: cover;
-    border-radius: 6px;
     background: #171717;
 }
 
@@ -76,12 +103,12 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
 }
 
 .gameTrack strong,
 .gameTrack span {
-    max-width: 220px;
+    max-width: 230px;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -89,12 +116,20 @@
 
 .gameTrack strong {
     font-size: 13px;
+    font-weight: 600;
 }
 
 .gameTrack span {
-    color: #777;
-    font-size: 11px;
+    color: var(--grey, #858582);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 9px;
+    letter-spacing: 1px;
 }
+
+
+/* =========================================================
+   TABLERO
+========================================================= */
 
 .snakeGame {
     position: relative;
@@ -105,10 +140,9 @@
     width: 100%;
     display: flex;
     justify-content: center;
-    padding: 10px;
+    padding: 12px;
     background: #050505;
-    border: 1px solid #222;
-    border-radius: 14px;
+    border: 1px solid var(--line, #292929);
     overflow: hidden;
 }
 
@@ -116,21 +150,25 @@
     display: block;
     width: min(800px, 100%);
     height: auto;
-    background: #080808;
+    background: #070707;
 }
+
+
+/* =========================================================
+   OVERLAY
+========================================================= */
 
 .snakeOverlay {
     position: absolute;
-    inset: 10px;
+    inset: 12px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 25px;
-    background: rgba(5, 5, 5, .86);
-    border-radius: 10px;
+    padding: 30px;
+    background: rgba(8, 8, 8, 0.9);
     text-align: center;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(5px);
 }
 
 .snakeOverlay.hidden {
@@ -138,69 +176,104 @@
 }
 
 .snakeOverlay h2 {
-    margin: 8px 0 10px;
-    font-size: 34px;
+    margin: 10px 0 14px;
+    font-family: var(--display, "Bebas Neue", sans-serif);
+    font-size: clamp(46px, 7vw, 76px);
+    font-weight: 400;
+    line-height: 0.8;
 }
 
 .snakeOverlay p {
     max-width: 420px;
-    margin-bottom: 22px;
-    color: #777;
-    line-height: 1.5;
+    margin-bottom: 26px;
+    color: var(--grey, #858582);
+    font-family: var(--serif, "Instrument Serif", serif);
+    font-size: 20px;
+    line-height: 1.25;
 }
 
+
+/* =========================================================
+   BOTONES
+========================================================= */
+
 .snakePrimary {
-    height: 44px;
-    padding: 0 24px;
+    height: 48px;
+    padding: 0 26px;
     border: 0;
-    border-radius: 9px;
-    background: #1db954;
-    color: #fff;
-    font-weight: 700;
+    background: var(--white, #f1f0eb);
+    color: var(--black, #0a0a0a);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 10px;
+    letter-spacing: 1px;
     cursor: pointer;
-    transition: background .15s ease, transform .15s ease;
+    transition: background 0.2s ease, color 0.2s ease;
 }
 
 .snakePrimary:hover {
-    background: #1ed760;
+    background: var(--accent, #8b78a5);
+    color: var(--white, #f1f0eb);
 }
 
 .snakePrimary:active {
-    transform: scale(.98);
+    transform: translateY(1px);
 }
 
+
+/* =========================================================
+   PIE
+========================================================= */
+
 .gameFooter {
-    margin-top: 20px;
+    margin-top: 25px;
+    padding-top: 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    color: #777;
-    font-size: 11px;
+    gap: 20px;
+    border-top: 1px solid var(--line, #292929);
+    color: var(--grey, #858582);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 9px;
     letter-spacing: 1px;
 }
 
 .gameFooter button {
-    height: 38px;
-    padding: 0 16px;
-    border: 0;
-    border-radius: 8px;
-    background: #171717;
-    color: #aaa;
+    height: 42px;
+    padding: 0 18px;
+    border: 1px solid var(--line, #292929);
+    background: transparent;
+    color: var(--grey, #858582);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 9px;
+    letter-spacing: 1px;
     cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease;
 }
 
 .gameFooter button:hover {
-    background: #252525;
-    color: #fff;
+    border-color: var(--white, #f1f0eb);
+    color: var(--white, #f1f0eb);
 }
 
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
 @media (max-width: 700px) {
+
     .snakeLayout {
         padding: 20px;
     }
 
     .gameHeader {
         grid-template-columns: 1fr auto;
+        gap: 18px;
+    }
+
+    .gameTitle strong {
+        font-size: 32px;
     }
 
     .gameTrack {
@@ -212,9 +285,5 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 15px;
-    }
-
-    .snakeOverlay h2 {
-        font-size: 28px;
     }
 }

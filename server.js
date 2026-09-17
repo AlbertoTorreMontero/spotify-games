@@ -1,930 +1,987 @@
 require("dotenv").config();
 
+const path = require("path");
+const http = require("http");
 const express = require("express");
+const { WebSocketServer, WebSocket } = require("ws");
 
 const app = express();
-const PORT = 3000;
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
 
-let accessToken = null;
+// =====================================================
+// CONFIGURACIÓN
+// =====================================================
 
-app.use(express.json());
-app.use(express.static("public"));
+const PORT = process.env.PORT || 3000;
 
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 
 const REDIRECT_URI =
-    "http://127.0.0.1:3000/callback";
+    process.env.SPOTIFY_REDIRECT_URI ||
+    `http://127.0.0.1:${PORT}/callback`;
 
 const HIPSTER_PLAYLIST_ID =
-    "323RDMtCMPS3Jb8cvv0QeE";
+    process.env.HIPSTER_PLAYLIST_ID || "323RDMtCMPS3Jb8cvv0QeE";
 
-const SPOTIFY_API =
-    "https://api.spotify.com/v1";
+const SPOTIFY_API = "https://api.spotify.com/v1";
+const SPOTIFY_ACCOUNTS = "https://accounts.spotify.com";
 
+const PUBLIC_DIR = path.join(__dirname, "public");
+const PAGE_SIZE = 50;
+const GAME_TRACKS = 50;
 
-// =====================================================
-// SPOTIFY
-// =====================================================
+const SCOPES = [
+    "streaming",
+    "user-read-private",
+    "user-modify-playback-state",
+    "user-read-playback-state",
+    "playlist-read-private",
+    "playlist-read-collaborative"
+].join(" ");
 
-function spotifyHeaders() {
-    return {
-        Authorization: `Bearer ${accessToken}`
-    };
+if (!CLIENT_ID || !CLIENT_SECRET) {
+    console.warn("Falta SPOTIFY_CLIENT_ID o SPOTIFY_CLIENT_SECRET en .env");
 }
 
 
-async function spotifyFetch(path, options = {}) {
+// =====================================================
+// SESIÓN
+// =====================================================
 
-    return fetch(
-        `${SPOTIFY_API}${path}`,
-        {
-            ...options,
-            headers: {
-                ...spotifyHeaders(),
-                ...(options.headers || {})
-            }
-        }
-    );
-}
+const session = {
+    accessToken: null,
+    refreshToken: null,
+    expiresAt: 0
+};
 
-
-function requireAuth(req, res) {
-
-    if (accessToken) {
-        return true;
+class SpotifyError extends Error {
+    constructor(message, status = 500) {
+        super(message);
+        this.status = status;
     }
+}
 
-    res.status(401).json({
-        error: "No hay usuario autenticado"
+function saveSession(data) {
+    session.accessToken = data.access_token;
+    session.expiresAt = Date.now() + (data.expires_in - 60) * 1000;
+
+    if (data.refresh_token) session.refreshToken = data.refresh_token;
+}
+
+function clearSession() {
+    session.accessToken = null;
+    session.refreshToken = null;
+    session.expiresAt = 0;
+}
+
+async function requestToken(body) {
+
+    const credentials = Buffer.from(
+        `${CLIENT_ID}:${CLIENT_SECRET}`
+    ).toString("base64");
+
+    const response = await fetch(`${SPOTIFY_ACCOUNTS}/api/token`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization: `Basic ${credentials}`
+        },
+        body: new URLSearchParams(body)
     });
 
-    return false;
-}
-
-
-// =====================================================
-// LOGIN
-// =====================================================
-
-app.get("/login", (req, res) => {
-
-    const scope = [
-        "streaming",
-        "user-read-private",
-        "user-read-email",
-        "user-modify-playback-state",
-        "playlist-read-private",
-        "playlist-read-collaborative"
-    ].join(" ");
-
-    const params = new URLSearchParams({
-        client_id: CLIENT_ID,
-        response_type: "code",
-        redirect_uri: REDIRECT_URI,
-        scope
-    });
-
-    res.redirect(
-        `https://accounts.spotify.com/authorize?${params}`
-    );
-});
-
-
-app.get("/callback", async (req, res) => {
-
-    const { code } = req.query;
-
-    if (!code) {
-        return res
-            .status(400)
-            .send("No se recibió ningún código.");
-    }
-
-    try {
-
-        const response = await fetch(
-            "https://accounts.spotify.com/api/token",
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type":
-                        "application/x-www-form-urlencoded"
-                },
-                body: new URLSearchParams({
-                    grant_type: "authorization_code",
-                    code,
-                    redirect_uri: REDIRECT_URI,
-                    client_id: CLIENT_ID,
-                    client_secret: CLIENT_SECRET
-                })
-            }
-        );
-
-        const data =
-            await response.json();
-
-        if (!response.ok) {
-
-            console.error(
-                "Spotify token error:",
-                data
-            );
-
-            return res
-                .status(response.status)
-                .send(
-                    "Error obteniendo el Access Token."
-                );
-        }
-
-        accessToken =
-            data.access_token;
-
-        console.log(
-            "Access Token conseguido"
-        );
-
-        res.redirect("/");
-
-    } catch (error) {
-
-        console.error(
-            "Error en callback:",
-            error
-        );
-
-        res
-            .status(500)
-            .send(
-                "Error conectando con Spotify."
-            );
-    }
-});
-
-
-app.get("/auth/token", (req, res) => {
-
-    if (!accessToken) {
-        return res.status(401).json({
-            error:
-                "No hay usuario autenticado"
-        });
-    }
-
-    res.json({
-        access_token:
-            accessToken
-    });
-});
-
-
-// =====================================================
-// HELPERS DE PLAYLISTS
-// =====================================================
-
-function getTrackYear(track) {
-
-    const date =
-        track.album?.release_date;
-
-    const year =
-        parseInt(
-            date?.slice(0, 4),
-            10
-        );
-
-    return Number.isInteger(year)
-        ? year
-        : null;
-}
-
-
-function formatTrack(track) {
-
-    return {
-        id: track.id,
-        uri: track.uri,
-        name: track.name,
-
-        artist:
-            (track.artists || [])
-                .map(artist => artist.name)
-                .join(", "),
-
-        album:
-            track.album?.name || "",
-
-        year:
-            getTrackYear(track),
-
-        cover:
-            track.album?.images?.[0]?.url ||
-            track.album?.images?.[1]?.url ||
-            track.album?.images?.[2]?.url ||
-            null
-    };
-}
-
-
-function validTrack(track) {
-
-    return (
-        track &&
-        track.type === "track" &&
-        track.uri
-    );
-}
-
-
-async function getPlaylistPage(
-    playlistId,
-    offset = 0,
-    limit = 50
-) {
-
-    const response =
-        await spotifyFetch(
-            `/playlists/${encodeURIComponent(
-                playlistId
-            )}/items?limit=${limit}&offset=${offset}`
-        );
-
-    const data =
-        await response.json();
+    const data = await response.json();
 
     if (!response.ok) {
-        throw new Error(
-            data?.error?.message ||
-            "Error obteniendo canciones."
+        throw new SpotifyError(
+            data.error_description || "No se pudo autenticar con Spotify.",
+            response.status
         );
     }
 
     return data;
 }
 
+async function getAccessToken() {
 
-async function getPlaylistTotal(
-    playlistId
-) {
+    if (!session.accessToken) return null;
+    if (Date.now() < session.expiresAt) return session.accessToken;
 
-    const response =
-        await spotifyFetch(
-            `/playlists/${encodeURIComponent(
-                playlistId
-            )}`
+    if (!session.refreshToken) {
+        clearSession();
+        return null;
+    }
+
+    try {
+        saveSession(
+            await requestToken({
+                grant_type: "refresh_token",
+                refresh_token: session.refreshToken
+            })
         );
 
-    const data =
-        await response.json();
+        return session.accessToken;
+
+    } catch (error) {
+        console.error("No se pudo renovar el token:", error.message);
+        clearSession();
+        return null;
+    }
+}
+
+
+// =====================================================
+// CLIENTE DE LA API
+// =====================================================
+
+async function spotifyFetch(endpoint, options = {}) {
+
+    const token = await getAccessToken();
+
+    if (!token) {
+        throw new SpotifyError("No hay ninguna sesión de Spotify activa.", 401);
+    }
+
+    const response = await fetch(`${SPOTIFY_API}${endpoint}`, {
+        ...options,
+        headers: {
+            Authorization: `Bearer ${token}`,
+            ...(options.headers || {})
+        }
+    });
+
+    const text = await response.text();
+
+    let data = null;
+
+    if (text) {
+        try {
+            data = JSON.parse(text);
+        } catch {
+            data = { error: { message: text } };
+        }
+    }
 
     if (!response.ok) {
-        throw new Error(
-            data?.error?.message ||
-            "Error obteniendo playlist."
+
+        // 403 en Development Mode suele ser la cuenta fuera de la allowlist
+        // o una playlist que no es tuya.
+        if (response.status === 403) {
+            throw new SpotifyError(
+                "Spotify ha denegado la petición (403). En Development Mode " +
+                "solo puedes usar cuentas añadidas en el Dashboard y leer " +
+                "playlists tuyas o colaborativas.",
+                403
+            );
+        }
+
+        throw new SpotifyError(
+            data?.error?.message || "Error en la API de Spotify.",
+            response.status
         );
     }
 
-    return {
-        name:
-            data.name || "",
-        total:
-            data.items?.total ??
-            data.tracks?.total ??
-            0
-    };
+    return data;
 }
 
-
-async function getAllPlaylistTracks(
-    playlistId
-) {
-
-    const tracks = [];
-    let offset = 0;
-
-    while (true) {
-
-        const data =
-            await getPlaylistPage(
-                playlistId,
-                offset,
-                50
-            );
-
-        const items =
-            data.items || [];
-
-        for (
-            const item of items
-        ) {
-
-            const track =
-                item.item;
-
-            if (validTrack(track)) {
-                tracks.push(
-                    formatTrack(track)
-                );
-            }
-        }
-
-        if (items.length < 50) {
-            break;
-        }
-
-        offset += 50;
+const route = handler => async (req, res) => {
+    try {
+        await handler(req, res);
+    } catch (error) {
+        const status = error.status || 500;
+        if (status >= 500) console.error(error);
+        res.status(status).json({ error: error.message || "Error inesperado." });
     }
-
-    return tracks;
-}
+};
 
 
-function uniqueTracks(tracks) {
+// =====================================================
+// CANCIONES
+// Spotify renombró en febrero de 2026, para apps en
+// Development Mode:
+//   /playlists/{id}/tracks  ->  /playlists/{id}/items
+//   playlist.tracks.total   ->  playlist.items.total
+//   item.track              ->  item.item
+// =====================================================
 
-    const seen = new Set();
+const ITEM_FIELDS =
+    "total,items(item(id,uri,name,type,is_local," +
+    "artists(name),album(name,release_date,images)))";
 
-    return tracks.filter(
-        track => {
-
-            if (seen.has(track.id)) {
-                return false;
-            }
-
-            seen.add(track.id);
-            return true;
-        }
+function isPlayable(track) {
+    return Boolean(
+        track &&
+        track.type === "track" &&
+        track.uri &&
+        track.id &&
+        !track.is_local
     );
 }
 
+function getYear(track) {
+    const year = parseInt(track.album?.release_date?.slice(0, 4), 10);
+    return Number.isInteger(year) ? year : null;
+}
+
+function formatTrack(track) {
+
+    const images = track.album?.images || [];
+
+    return {
+        id: track.id,
+        uri: track.uri,
+        name: track.name,
+        artist: (track.artists || []).map(artist => artist.name).join(", "),
+        album: track.album?.name || "",
+        year: getYear(track),
+        cover: images[0]?.url || images[1]?.url || images[2]?.url || null
+    };
+}
+
+function uniqueTracks(tracks) {
+    const seen = new Set();
+
+    return tracks.filter(track => {
+        if (seen.has(track.id)) return false;
+        seen.add(track.id);
+        return true;
+    });
+}
 
 function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
 
-    for (
-        let i = array.length - 1;
-        i > 0;
-        i--
-    ) {
+function hasYear(track) {
+    return Number.isInteger(track.year) && track.year > 0;
+}
 
-        const j =
-            Math.floor(
-                Math.random() *
-                (i + 1)
-            );
+async function getPlaylistInfo(playlistId) {
 
-        [
-            array[i],
-            array[j]
-        ] = [
-            array[j],
-            array[i]
-        ];
+    const data = await spotifyFetch(
+        `/playlists/${encodeURIComponent(playlistId)}` +
+        `?fields=${encodeURIComponent("name,items(total),tracks(total)")}`
+    );
+
+    const total = data?.items?.total ?? data?.tracks?.total ?? null;
+
+    // Si el campo no viene, la playlist no es tuya ni colaborativa.
+    if (total === null) {
+        throw new SpotifyError(
+            "Spotify solo deja leer el contenido de playlists tuyas o " +
+            "colaborativas. Guarda una copia en tu cuenta y vuelve a probar.",
+            403
+        );
     }
 
-    return array;
+    return { name: data?.name || "", total };
+}
+
+async function getPlaylistPage(playlistId, offset = 0, limit = PAGE_SIZE) {
+    return spotifyFetch(
+        `/playlists/${encodeURIComponent(playlistId)}/items` +
+        `?limit=${limit}&offset=${offset}` +
+        `&fields=${encodeURIComponent(ITEM_FIELDS)}`
+    );
+}
+
+function extractTracks(page) {
+    return (page?.items || [])
+        .map(entry => entry.item ?? entry.track)
+        .filter(isPlayable)
+        .map(formatTrack);
+}
+
+async function getAllPlaylistTracks(playlistId) {
+
+    const { total } = await getPlaylistInfo(playlistId);
+
+    const pages = [];
+
+    for (let offset = 0; offset < total; offset += PAGE_SIZE) {
+        pages.push(extractTracks(await getPlaylistPage(playlistId, offset)));
+    }
+
+    return uniqueTracks(pages.flat());
+}
+
+async function getRandomPlaylistTracks(playlistId, amount = GAME_TRACKS) {
+
+    const { name, total } = await getPlaylistInfo(playlistId);
+
+    if (!total) return { name, tracks: [] };
+
+    const offsets = [];
+
+    for (let offset = 0; offset < total; offset += PAGE_SIZE) {
+        offsets.push(offset);
+    }
+
+    shuffle(offsets);
+
+    let tracks = [];
+
+    for (const offset of offsets) {
+
+        tracks = uniqueTracks(
+            tracks.concat(
+                extractTracks(await getPlaylistPage(playlistId, offset))
+            )
+        );
+
+        if (tracks.length >= amount) break;
+    }
+
+    return { name, tracks: shuffle(tracks).slice(0, amount) };
 }
 
 
 // =====================================================
-// PLAYLISTS DEL USUARIO
+// PÁGINAS
 // =====================================================
 
-app.get(
-    "/api/playlists",
-    async (req, res) => {
+app.use(express.json({ limit: "1mb" }));
+app.use(express.static(PUBLIC_DIR, { index: false }));
 
-        if (!requireAuth(req, res)) {
-            return;
-        }
+app.get("/", (req, res) => {
+    res.sendFile(path.join(PUBLIC_DIR, "landing", "landing.html"));
+});
 
-        try {
+app.get("/app", (req, res) => {
+    res.sendFile(path.join(PUBLIC_DIR, "index.html"));
+});
 
-            const response =
-                await spotifyFetch(
-                    "/me/playlists?limit=50"
-                );
 
-            const data =
-                await response.json();
+// =====================================================
+// AUTENTICACIÓN
+// =====================================================
 
-            if (!response.ok) {
+app.get("/login", (req, res) => {
 
-                return res
-                    .status(response.status)
-                    .json(data);
-            }
+    const params = new URLSearchParams({
+        client_id: CLIENT_ID,
+        response_type: "code",
+        redirect_uri: REDIRECT_URI,
+        scope: SCOPES
+    });
 
-            const playlists =
-                (data.items || [])
-                    .map(
-                        playlist => ({
-                            id:
-                                playlist.id,
+    res.redirect(`${SPOTIFY_ACCOUNTS}/authorize?${params}`);
+});
 
-                            name:
-                                playlist.name,
+app.get("/callback", route(async (req, res) => {
 
-                            image:
-                                playlist.images?.[0]?.url ||
-                                null,
+    const { code, error } = req.query;
 
-                            tracks:
-                                playlist.items?.total ??
-                                playlist.tracks?.total ??
-                                0,
+    if (error) return res.redirect("/?auth=denied");
+    if (!code) return res.redirect("/?auth=error");
 
-                            uri:
-                                playlist.uri
-                        })
-                    );
+    saveSession(
+        await requestToken({
+            grant_type: "authorization_code",
+            code,
+            redirect_uri: REDIRECT_URI
+        })
+    );
 
-            res.json(playlists);
+    console.log("Sesión de Spotify iniciada.");
+    res.redirect("/app");
+}));
 
-        } catch (error) {
+app.get("/auth/token", route(async (req, res) => {
 
-            console.error(
-                "Error playlists:",
-                error
-            );
+    const token = await getAccessToken();
 
-            res.status(500).json({
-                error:
-                    "No se pudieron obtener las playlists."
+    if (!token) {
+        throw new SpotifyError("No hay ninguna sesión de Spotify activa.", 401);
+    }
+
+    res.json({
+        access_token: token,
+        expires_in: Math.max(
+            0,
+            Math.floor((session.expiresAt - Date.now()) / 1000)
+        )
+    });
+}));
+
+app.post("/auth/logout", (req, res) => {
+    clearSession();
+    res.sendStatus(204);
+});
+
+app.get("/api/me", route(async (req, res) => {
+
+    const me = await spotifyFetch("/me");
+
+    // "product" y "email" ya no se devuelven en Development Mode.
+    res.json({
+        id: me.id,
+        name: me.display_name || me.id
+    });
+}));
+
+
+// =====================================================
+// PLAYLISTS
+// =====================================================
+
+app.get("/api/playlists", route(async (req, res) => {
+
+    const playlists = [];
+    let url = "/me/playlists?limit=50";
+
+    while (url) {
+
+        const data = await spotifyFetch(url);
+
+        for (const playlist of data.items || []) {
+
+            if (!playlist) continue;
+
+            playlists.push({
+                id: playlist.id,
+                name: playlist.name,
+                owner: playlist.owner?.display_name || "",
+                image: playlist.images?.[0]?.url || null,
+                tracks: playlist.items?.total ?? playlist.tracks?.total ?? 0,
+                uri: playlist.uri
             });
         }
+
+        url = data.next ? data.next.replace(SPOTIFY_API, "") : null;
     }
-);
 
+    res.json(playlists.filter(playlist => playlist.tracks > 0));
+}));
 
-// =====================================================
-// 50 CANCIONES ALEATORIAS
-// =====================================================
+app.get("/api/playlists/:playlistId/tracks", route(async (req, res) => {
 
-app.get(
-    "/api/playlists/:playlistId/tracks",
-    async (req, res) => {
+    const { name, tracks } = await getRandomPlaylistTracks(
+        req.params.playlistId
+    );
 
-        if (!requireAuth(req, res)) {
-            return;
-        }
+    console.log(`${name}: ${tracks.length} canciones`);
+    res.json(tracks);
+}));
 
-        const {
-            playlistId
-        } = req.params;
+app.get("/api/playlists/:playlistId/catalog", route(async (req, res) => {
+    res.json(shuffle(await getAllPlaylistTracks(req.params.playlistId)));
+}));
 
-        try {
+app.get("/api/playlists/:playlistId/hipster", route(async (req, res) => {
 
-            const {
-                name,
-                total
-            } =
-                await getPlaylistTotal(
-                    playlistId
-                );
+    const tracks = (
+        await getAllPlaylistTracks(req.params.playlistId)
+    ).filter(hasYear);
 
-            if (!total) {
-                return res.json([]);
-            }
+    console.log(`Hipster personal: ${tracks.length} canciones`);
+    res.json(shuffle(tracks));
+}));
 
-            const amount =
-                Math.min(50, total);
+app.get("/api/hipster/tracks", route(async (req, res) => {
 
-            const positions =
-                new Set();
+    const tracks = (
+        await getAllPlaylistTracks(HIPSTER_PLAYLIST_ID)
+    ).filter(hasYear);
 
-            while (
-                positions.size < amount
-            ) {
-
-                positions.add(
-                    Math.floor(
-                        Math.random() *
-                        total
-                    )
-                );
-            }
-
-            const offsets =
-                new Set(
-                    [...positions].map(
-                        position =>
-                            Math.floor(
-                                position / 50
-                            ) * 50
-                    )
-                );
-
-            const tracks = [];
-
-            for (
-                const offset
-                of offsets
-            ) {
-
-                const data =
-                    await getPlaylistPage(
-                        playlistId,
-                        offset,
-                        50
-                    );
-
-                for (
-                    const item
-                    of data.items || []
-                ) {
-
-                    const track =
-                        item.item;
-
-                    if (validTrack(track)) {
-                        tracks.push(
-                            formatTrack(track)
-                        );
-                    }
-                }
-            }
-
-            const result =
-                shuffle(
-                    uniqueTracks(
-                        tracks
-                    )
-                ).slice(
-                    0,
-                    50
-                );
-
-            console.log(
-                `Playlist ${name}: ${result.length} canciones`
-            );
-
-            res.json(result);
-
-        } catch (error) {
-
-            console.error(
-                "Error obteniendo canciones:",
-                error
-            );
-
-            res.status(500).json({
-                error:
-                    "No se pudieron obtener las canciones."
-            });
-        }
-    }
-);
-
-
-// =====================================================
-// CATÁLOGO COMPLETO — BINGO
-// =====================================================
-
-app.get(
-    "/api/playlists/:playlistId/catalog",
-    async (req, res) => {
-
-        if (!requireAuth(req, res)) {
-            return;
-        }
-
-        try {
-
-            const tracks =
-                shuffle(
-                    uniqueTracks(
-                        await getAllPlaylistTracks(
-                            req.params.playlistId
-                        )
-                    )
-                );
-
-            res.json(tracks);
-
-        } catch (error) {
-
-            console.error(
-                "Error cargando catálogo:",
-                error
-            );
-
-            res.status(500).json({
-                error:
-                    "No se pudo cargar el catálogo de la playlist."
-            });
-        }
-    }
-);
-
-
-// =====================================================
-// HIPSTER PERSONAL
-// =====================================================
-
-app.get(
-    "/api/playlists/:playlistId/hipster",
-    async (req, res) => {
-
-        if (!requireAuth(req, res)) {
-            return;
-        }
-
-        try {
-
-            const tracks =
-                uniqueTracks(
-                    await getAllPlaylistTracks(
-                        req.params.playlistId
-                    )
-                )
-                .filter(
-                    track =>
-                        Number.isInteger(
-                            track.year
-                        ) &&
-                        track.year > 0
-                );
-
-            shuffle(tracks);
-
-            console.log(
-                `Hipster personal: ${tracks.length} canciones`
-            );
-
-            res.json(tracks);
-
-        } catch (error) {
-
-            console.error(
-                "Error cargando Hipster personal:",
-                error
-            );
-
-            res.status(500).json({
-                error:
-                    "No se pudo cargar la playlist para Hipster."
-            });
-        }
-    }
-);
-
-
-// =====================================================
-// HIPSTER GLOBAL
-// =====================================================
-
-app.get(
-    "/api/hipster/tracks",
-    async (req, res) => {
-
-        if (!requireAuth(req, res)) {
-            return;
-        }
-
-        try {
-
-            const tracks =
-                uniqueTracks(
-                    await getAllPlaylistTracks(
-                        HIPSTER_PLAYLIST_ID
-                    )
-                )
-                .filter(
-                    track =>
-                        Number.isInteger(
-                            track.year
-                        ) &&
-                        track.year > 0
-                );
-
-            shuffle(tracks);
-
-            console.log(
-                `Hipster Global: ${tracks.length} canciones`
-            );
-
-            res.json(tracks);
-
-        } catch (error) {
-
-            console.error(
-                "Error cargando Hipster Global:",
-                error
-            );
-
-            res.status(500).json({
-                error:
-                    "No se pudo cargar Hipster Global."
-            });
-        }
-    }
-);
+    console.log(`Hipster global: ${tracks.length} canciones`);
+    res.json(shuffle(tracks));
+}));
 
 
 // =====================================================
 // REPRODUCCIÓN
 // =====================================================
 
-app.put(
-    "/api/transfer",
-    async (req, res) => {
+app.put("/api/transfer", route(async (req, res) => {
 
-        if (!requireAuth(req, res)) {
-            return;
-        }
+    const { deviceId } = req.body;
 
-        const {
-            deviceId
-        } = req.body;
-
-        if (!deviceId) {
-            return res
-                .status(400)
-                .send("Falta deviceId.");
-        }
-
-        try {
-
-            const response =
-                await spotifyFetch(
-                    "/me/player",
-                    {
-                        method: "PUT",
-
-                        headers: {
-                            "Content-Type":
-                                "application/json"
-                        },
-
-                        body:
-                            JSON.stringify({
-                                device_ids: [
-                                    deviceId
-                                ],
-                                play: false
-                            })
-                    }
-                );
-
-            if (!response.ok) {
-
-                return res
-                    .status(
-                        response.status
-                    )
-                    .send(
-                        await response.text()
-                    );
-            }
-
-            res.sendStatus(204);
-
-        } catch (error) {
-
-            console.error(
-                "Error transfiriendo:",
-                error
-            );
-
-            res.status(500).send(
-                "Error transfiriendo reproducción."
-            );
-        }
+    if (!deviceId) {
+        throw new SpotifyError("Falta el identificador del dispositivo.", 400);
     }
-);
 
+    await spotifyFetch("/me/player", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_ids: [deviceId], play: false })
+    });
 
-app.put(
-    "/api/play",
-    async (req, res) => {
+    res.sendStatus(204);
+}));
 
-        if (!requireAuth(req, res)) {
-            return;
-        }
+app.put("/api/play", route(async (req, res) => {
 
-        const {
-            deviceId,
-            trackUri
-        } = req.body;
+    const { deviceId, trackUri, positionMs } = req.body;
 
-        if (!deviceId) {
-            return res
-                .status(400)
-                .send("Falta deviceId.");
-        }
-
-        try {
-
-            const response =
-                await spotifyFetch(
-                    `/me/player/play?device_id=${encodeURIComponent(
-                        deviceId
-                    )}`,
-                    {
-                        method: "PUT",
-
-                        headers: {
-                            "Content-Type":
-                                "application/json"
-                        },
-
-                        body:
-                            JSON.stringify(
-                                trackUri
-                                    ? {
-                                        uris: [
-                                            trackUri
-                                        ]
-                                    }
-                                    : {}
-                            )
-                    }
-                );
-
-            if (!response.ok) {
-
-                return res
-                    .status(
-                        response.status
-                    )
-                    .send(
-                        await response.text()
-                    );
-            }
-
-            res.sendStatus(204);
-
-        } catch (error) {
-
-            console.error(
-                "Error reproduciendo:",
-                error
-            );
-
-            res.status(500).send(
-                "Error reproduciendo."
-            );
-        }
+    if (!deviceId) {
+        throw new SpotifyError("Falta el identificador del dispositivo.", 400);
     }
-);
 
-
-app.put(
-    "/api/pause",
-    async (req, res) => {
-
-        if (!requireAuth(req, res)) {
-            return;
+    await spotifyFetch(
+        `/me/player/play?device_id=${encodeURIComponent(deviceId)}`,
+        {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(
+                trackUri
+                    ? { uris: [trackUri], position_ms: positionMs || 0 }
+                    : {}
+            )
         }
+    );
 
-        try {
+    res.sendStatus(204);
+}));
 
-            const response =
-                await spotifyFetch(
-                    "/me/player/pause",
-                    {
-                        method: "PUT"
-                    }
-                );
-
-            if (!response.ok) {
-
-                return res
-                    .status(
-                        response.status
-                    )
-                    .send(
-                        await response.text()
-                    );
-            }
-
-            res.sendStatus(204);
-
-        } catch (error) {
-
-            console.error(
-                "Error pausando:",
-                error
-            );
-
-            res.status(500).send(
-                "Error pausando."
-            );
-        }
-    }
-);
+app.put("/api/pause", route(async (req, res) => {
+    await spotifyFetch("/me/player/pause", { method: "PUT" });
+    res.sendStatus(204);
+}));
 
 
 // =====================================================
-// SERVIDOR
+// MUSICROULETTE — SALAS EN MEMORIA
+//
+// El servidor nunca toca las cuentas de Spotify de los
+// demás. Cada jugador lee sus propias playlists con su
+// sesión y manda solo portada, título y artista.
 // =====================================================
 
-app.listen(
-    PORT,
-    () => {
+const ROUNDS = 5;
+const COVERS_PER_ROUND = 5;
+const ROUND_MS = 15000;
+const BREAK_MS = 5000;
+const MAX_PLAYERS = 10;
+const MIN_TRACKS = COVERS_PER_ROUND;
 
-        console.log(
-            `Spotify Games: http://127.0.0.1:${PORT}`
-        );
+const rooms = new Map();
+
+function send(ws, type, data = {}) {
+    if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type, ...data }));
     }
-);
+}
+
+function broadcast(room, type, data = {}) {
+    room.players.forEach(player => send(player.ws, type, data));
+}
+
+function createCode() {
+    let code;
+
+    do {
+        code = Math.random().toString(36).slice(2, 7).toUpperCase();
+    } while (rooms.has(code));
+
+    return code;
+}
+
+function roomState(room) {
+    return {
+        code: room.code,
+        hostId: room.hostId,
+        status: room.status,
+        players: room.players.map(player => ({
+            id: player.id,
+            name: player.name,
+            ready: Boolean(player.playlist && player.tracks.length >= MIN_TRACKS),
+            playlist: player.playlist?.name || null,
+            score: player.score
+        }))
+    };
+}
+
+function broadcastState(room) {
+    broadcast(room, "room_state", roomState(room));
+}
+
+function buildRounds(room) {
+
+    const eligible = room.players.filter(
+        player => player.tracks.length >= MIN_TRACKS
+    );
+
+    const owners = [];
+    let pool = [];
+
+    for (let i = 0; i < ROUNDS; i++) {
+
+        if (!pool.length) pool = shuffle([...eligible]);
+
+        owners.push(pool.pop());
+    }
+
+    return owners.map(owner => ({
+        ownerId: owner.id,
+        tracks: shuffle([...owner.tracks]).slice(0, COVERS_PER_ROUND)
+    }));
+}
+
+function startGame(room) {
+
+    if (room.status !== "lobby") return;
+
+    if (room.players.length < 2) {
+        return broadcast(room, "error_message", {
+            message: "Hacen falta al menos dos jugadores."
+        });
+    }
+
+    const notReady = room.players.filter(
+        player => !player.playlist || player.tracks.length < MIN_TRACKS
+    );
+
+    if (notReady.length) {
+        return broadcast(room, "error_message", {
+            message: "Todos tienen que elegir una playlist antes de empezar."
+        });
+    }
+
+    room.status = "playing";
+    room.currentRound = 0;
+
+    room.players.forEach(player => {
+        player.score = 0;
+        player.answer = null;
+    });
+
+    room.rounds = buildRounds(room);
+
+    startRound(room);
+}
+
+function startRound(room) {
+
+    const round = room.rounds[room.currentRound];
+
+    if (!round) return finishGame(room);
+
+    room.startedAt = Date.now();
+
+    room.players.forEach(player => {
+        player.answer = null;
+    });
+
+    const answers = shuffle(
+        room.players.map(player => ({ id: player.id, name: player.name }))
+    );
+
+    room.players.forEach(player => {
+        send(player.ws, "round_start", {
+            round: room.currentRound + 1,
+            totalRounds: ROUNDS,
+            duration: ROUND_MS,
+            tracks: round.tracks,
+            answers,
+            isOwner: player.id === round.ownerId
+        });
+    });
+
+    clearTimeout(room.timer);
+    room.timer = setTimeout(() => finishRound(room), ROUND_MS);
+}
+
+function handleVote(room, player, ownerId) {
+
+    if (room.status !== "playing") return;
+    if (player.answer) return;
+
+    const round = room.rounds[room.currentRound];
+
+    // El dueño de la ronda no juega: ya sabe la respuesta.
+    if (player.id === round.ownerId) return;
+
+    const elapsed = Date.now() - room.startedAt;
+
+    if (elapsed > ROUND_MS) return;
+
+    player.answer = ownerId;
+
+    const correct = ownerId === round.ownerId;
+
+    if (correct) {
+        const remaining = Math.max(0, ROUND_MS - elapsed);
+        player.score += 500 + Math.round(500 * (remaining / ROUND_MS));
+    }
+
+    send(player.ws, "vote_registered", { correct, score: player.score });
+
+    const pending = room.players.filter(
+        other => other.id !== round.ownerId && !other.answer
+    );
+
+    if (!pending.length) finishRound(room);
+}
+
+function finishRound(room) {
+
+    if (room.status !== "playing") return;
+
+    clearTimeout(room.timer);
+
+    const round = room.rounds[room.currentRound];
+    const owner = room.players.find(player => player.id === round.ownerId);
+
+    broadcast(room, "round_results", {
+        ownerId: round.ownerId,
+        ownerName: owner?.name || "Alguien que se fue",
+        results: room.players
+            .map(player => ({
+                id: player.id,
+                name: player.name,
+                correct: player.answer === round.ownerId,
+                answered: Boolean(player.answer),
+                isOwner: player.id === round.ownerId,
+                score: player.score
+            }))
+            .sort((a, b) => b.score - a.score)
+    });
+
+    room.currentRound++;
+
+    clearTimeout(room.timer);
+
+    room.timer = setTimeout(() => {
+        if (room.currentRound >= ROUNDS) finishGame(room);
+        else startRound(room);
+    }, BREAK_MS);
+}
+
+function finishGame(room) {
+
+    room.status = "finished";
+    clearTimeout(room.timer);
+
+    broadcast(room, "game_over", {
+        scoreboard: room.players
+            .map(player => ({
+                id: player.id,
+                name: player.name,
+                score: player.score
+            }))
+            .sort((a, b) => b.score - a.score)
+    });
+}
+
+function resetRoom(room) {
+
+    clearTimeout(room.timer);
+
+    room.status = "lobby";
+    room.currentRound = 0;
+    room.rounds = [];
+
+    room.players.forEach(player => {
+        player.score = 0;
+        player.answer = null;
+    });
+
+    broadcastState(room);
+}
+
+function leaveRoom(player) {
+
+    const room = rooms.get(player.room);
+
+    player.room = null;
+
+    if (!room) return;
+
+    room.players = room.players.filter(other => other.id !== player.id);
+
+    if (!room.players.length) {
+        clearTimeout(room.timer);
+        rooms.delete(room.code);
+        return;
+    }
+
+    if (room.hostId === player.id) {
+        room.hostId = room.players[0].id;
+    }
+
+    // Si se queda gente insuficiente a mitad de partida, se vuelve al lobby.
+    if (room.status === "playing" && room.players.length < 2) {
+        broadcast(room, "error_message", {
+            message: "No quedan jugadores suficientes. Vuelta a la sala."
+        });
+        return resetRoom(room);
+    }
+
+    broadcastState(room);
+}
+
+function sanitizeName(value) {
+    return String(value || "").trim().slice(0, 20) || "Jugador";
+}
+
+function sanitizeTracks(value) {
+
+    if (!Array.isArray(value)) return [];
+
+    return value
+        .filter(track => track?.id && track?.cover)
+        .slice(0, 100)
+        .map(track => ({
+            id: String(track.id).slice(0, 40),
+            name: String(track.name || "").slice(0, 120),
+            artist: String(track.artist || "").slice(0, 120),
+            cover: String(track.cover).slice(0, 300)
+        }));
+}
+
+wss.on("connection", ws => {
+
+    const player = {
+        ws,
+        id: Math.random().toString(36).slice(2, 10),
+        name: "Jugador",
+        room: null,
+        playlist: null,
+        tracks: [],
+        score: 0,
+        answer: null
+    };
+
+    ws.on("message", raw => {
+
+        let message;
+
+        try {
+            message = JSON.parse(raw);
+        } catch {
+            return;
+        }
+
+        const room = player.room ? rooms.get(player.room) : null;
+
+        switch (message.type) {
+
+            case "create_room": {
+
+                if (player.room) leaveRoom(player);
+
+                player.name = sanitizeName(message.name);
+
+                const code = createCode();
+
+                const newRoom = {
+                    code,
+                    hostId: player.id,
+                    players: [player],
+                    status: "lobby",
+                    rounds: [],
+                    currentRound: 0,
+                    timer: null,
+                    startedAt: 0
+                };
+
+                rooms.set(code, newRoom);
+                player.room = code;
+
+                send(ws, "joined", { code, playerId: player.id });
+                broadcastState(newRoom);
+                break;
+            }
+
+            case "join_room": {
+
+                const code = String(message.code || "").trim().toUpperCase();
+                const target = rooms.get(code);
+
+                if (!target) {
+                    return send(ws, "error_message", {
+                        message: "No existe ninguna sala con ese código."
+                    });
+                }
+
+                if (target.status !== "lobby") {
+                    return send(ws, "error_message", {
+                        message: "Esa partida ya ha empezado."
+                    });
+                }
+
+                if (target.players.length >= MAX_PLAYERS) {
+                    return send(ws, "error_message", {
+                        message: "La sala está completa."
+                    });
+                }
+
+                if (player.room) leaveRoom(player);
+
+                player.name = sanitizeName(message.name);
+                player.room = code;
+                target.players.push(player);
+
+                send(ws, "joined", { code, playerId: player.id });
+                broadcastState(target);
+                break;
+            }
+
+            case "set_playlist": {
+
+                if (!room || room.status !== "lobby") return;
+
+                const tracks = sanitizeTracks(message.tracks);
+
+                if (tracks.length < MIN_TRACKS) {
+                    return send(ws, "error_message", {
+                        message:
+                            `Esa playlist solo tiene ${tracks.length} canciones ` +
+                            `con portada. Hacen falta ${MIN_TRACKS}.`
+                    });
+                }
+
+                player.playlist = {
+                    id: String(message.playlist?.id || ""),
+                    name: String(message.playlist?.name || "").slice(0, 80)
+                };
+
+                player.tracks = tracks;
+
+                broadcastState(room);
+                break;
+            }
+
+            case "start_game":
+                if (room && room.hostId === player.id) startGame(room);
+                break;
+
+            case "vote":
+                if (room) handleVote(room, player, message.ownerId);
+                break;
+
+            case "play_again":
+                if (room && room.hostId === player.id) resetRoom(room);
+                break;
+
+            case "leave_room":
+                leaveRoom(player);
+                break;
+        }
+    });
+
+    ws.on("close", () => leaveRoom(player));
+    ws.on("error", () => leaveRoom(player));
+});
+
+
+// =====================================================
+// 404
+// =====================================================
+
+app.use((req, res) => {
+    if (req.path.startsWith("/api/")) {
+        return res.status(404).json({ error: "Ruta no encontrada." });
+    }
+    res.redirect("/");
+});
+
+server.listen(PORT, () => {
+    console.log(`BeatPlay en http://127.0.0.1:${PORT}`);
+});

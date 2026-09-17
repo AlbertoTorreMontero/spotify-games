@@ -1,80 +1,99 @@
+/* =========================================================
+   BEATPLAY — PLAYLISTS DEL USUARIO
+   Mismos nombres de funciones que antes.
+   Cada tarjeta lleva las dos convenciones de clase
+   (.playlist y .playlist-card) para que el CSS aplique
+   venga de donde venga.
+========================================================= */
+
 let playlists = [];
 let selectedPlaylist = null;
 
 
 // =====================================================
-// PLAYLISTS
+// UTILIDADES
+// =====================================================
+
+const $playlist = id => document.getElementById(id);
+
+function setPlaylistStatus(text) {
+    const status = $playlist("playlistStatus");
+    if (status) status.textContent = text;
+}
+
+async function playlistApi(url) {
+
+    const response = await fetch(url);
+
+    let data = null;
+
+    try {
+        data = await response.json();
+    } catch {
+        data = null;
+    }
+
+    if (!response.ok) {
+        throw new Error(
+            data?.error || "No se pudo contactar con el servidor."
+        );
+    }
+
+    return data;
+}
+
+
+// =====================================================
+// CARGA
 // =====================================================
 
 async function loadPlaylists() {
 
-    const container =
-        document.getElementById(
-            "playlistList"
-        );
+    const container = $playlist("playlistList");
 
-    if (!container) {
-        return;
-    }
+    if (!container) return [];
 
-    container.innerHTML = `
-        <div class="playlistLoading">
-            Cargando playlists...
-        </div>
-    `;
+    setPlaylistStatus("Cargando playlists…");
 
     try {
-
-        const response =
-            await fetch(
-                "/api/playlists"
-            );
-
-        if (!response.ok) {
-            throw new Error(
-                "No se pudieron cargar las playlists."
-            );
-        }
-
-        const data =
-            await response.json();
+        const data = await playlistApi("/api/playlists");
 
         if (!Array.isArray(data)) {
-            throw new Error(
-                "Respuesta de playlists no válida."
-            );
+            throw new Error("La respuesta de playlists no es válida.");
         }
 
         playlists = data;
 
-        if (!playlists.length) {
-
-            container.innerHTML = `
-                <div class="playlistEmpty">
-                    No tienes playlists disponibles.
-                </div>
-            `;
-
-            updateStartButton?.();
-            return;
-        }
-
         renderPlaylists();
-        updateStartButton?.();
+
+        window.updateStartButton?.();
+
+        return playlists;
 
     } catch (error) {
 
-        console.error(
-            "Playlists:",
-            error
+        console.error("Playlists:", error);
+
+        container.textContent = "";
+        container.appendChild(
+            createMessage("No se pudieron cargar tus playlists.")
         );
 
-        container.innerHTML = `
-            <div class="playlistEmpty">
-                Error cargando tus playlists.
-            </div>
-        `;
+        setPlaylistStatus("Error");
+
+        throw error;
     }
+}
+
+
+function createMessage(text) {
+
+    const message = document.createElement("p");
+
+    message.className = "playlistEmpty playlist-empty";
+    message.textContent = text;
+
+    return message;
 }
 
 
@@ -84,87 +103,71 @@ async function loadPlaylists() {
 
 function renderPlaylists() {
 
-    const container =
-        document.getElementById(
-            "playlistList"
+    const container = $playlist("playlistList");
+
+    if (!container) return;
+
+    container.textContent = "";
+
+    if (!playlists.length) {
+
+        container.appendChild(
+            createMessage("No tienes playlists con canciones.")
         );
 
-    if (!container) {
+        setPlaylistStatus("0 playlists");
         return;
     }
 
-    const fragment =
-        document.createDocumentFragment();
+    const fragment = document.createDocumentFragment();
 
-    container.innerHTML = "";
+    for (const playlist of playlists) {
 
-    playlists.forEach(
-        playlist => {
+        const card = document.createElement("button");
 
-            const card =
-                document.createElement(
-                    "button"
-                );
+        card.type = "button";
+        card.className = "playlist playlist-card";
+        card.dataset.id = playlist.id;
 
-            card.type = "button";
-            card.className = "playlist";
-            card.dataset.id =
-                playlist.id;
+        card.classList.toggle(
+            "selected",
+            selectedPlaylist?.id === playlist.id
+        );
 
-            const image =
-                document.createElement(
-                    "img"
-                );
+        if (playlist.image) {
 
-            image.src =
-                playlist.image || "";
+            const image = document.createElement("img");
 
-            image.alt =
-                playlist.name || "";
+            image.src = playlist.image;
+            image.alt = "";
+            image.loading = "lazy";
 
-            const name =
-                document.createElement(
-                    "div"
-                );
-
-            name.className =
-                "playlistName";
-
-            name.textContent =
-                playlist.name || "";
-
-            const tracks =
-                document.createElement(
-                    "span"
-                );
-
-            tracks.className =
-                "playlistTracks";
-
-            tracks.textContent =
-                `${playlist.tracks || 0} canciones`;
-
-            card.append(
-                image,
-                name,
-                tracks
-            );
-
-            card.addEventListener(
-                "click",
-                () => selectPlaylist(
-                    playlist
-                )
-            );
-
-            fragment.appendChild(
-                card
-            );
+            card.appendChild(image);
         }
-    );
 
-    container.appendChild(
-        fragment
+        const info = document.createElement("span");
+        info.className = "playlist-card-info";
+
+        const name = document.createElement("span");
+        name.className = "playlistName playlist-card-name";
+        name.textContent = playlist.name || "Sin nombre";
+
+        const tracks = document.createElement("span");
+        tracks.className = "playlistTracks playlist-card-tracks";
+        tracks.textContent = `${playlist.tracks || 0} canciones`;
+
+        info.append(name, tracks);
+        card.appendChild(info);
+
+        card.addEventListener("click", () => selectPlaylist(playlist));
+
+        fragment.appendChild(card);
+    }
+
+    container.appendChild(fragment);
+
+    setPlaylistStatus(
+        `${playlists.length} playlist${playlists.length === 1 ? "" : "s"}`
     );
 }
 
@@ -175,30 +178,32 @@ function renderPlaylists() {
 
 function selectPlaylist(playlist) {
 
-    selectedPlaylist =
-        playlist;
+    selectedPlaylist = playlist;
 
     document
-        .querySelectorAll(".playlist")
+        .querySelectorAll(".playlist, .playlist-card")
         .forEach(card =>
             card.classList.toggle(
                 "selected",
-                card.dataset.id ===
-                    playlist.id
+                card.dataset.id === playlist.id
             )
         );
 
-    const selectedText =
-        document.getElementById(
-            "selectedText"
-        );
-
-    if (selectedText) {
-        selectedText.textContent =
-            `Playlist: ${playlist.name}`;
+    if (typeof window.updateStartButton === "function") {
+        window.updateStartButton();
+        return;
     }
 
-    updateStartButton?.();
+    const selectedText = $playlist("selectedText");
+
+    if (selectedText) {
+        selectedText.textContent = playlist.name;
+    }
+}
+
+
+function getSelectedPlaylist() {
+    return selectedPlaylist;
 }
 
 
@@ -206,83 +211,91 @@ function selectPlaylist(playlist) {
 // CANCIONES
 // =====================================================
 
-async function getPlaylistTracks(
-    playlistId
-) {
+function normalizeTrack(track) {
 
-    if (!playlistId) {
-        throw new Error(
-            "Falta el ID de la playlist."
-        );
-    }
+    const year = Number(track.year);
 
-    const response =
-        await fetch(
-            `/api/playlists/${encodeURIComponent(
-                playlistId
-            )}/tracks`
-        );
-
-    if (!response.ok) {
-
-        console.error(
-            "Error obteniendo canciones:",
-            await response.text()
-        );
-
-        throw new Error(
-            "No se pudieron obtener las canciones."
-        );
-    }
-
-    const data =
-        await response.json();
-
-    if (!Array.isArray(data)) {
-        throw new Error(
-            "La respuesta de canciones no es válida."
-        );
-    }
-
-    return data
-        .filter(track =>
-            track?.uri &&
-            track?.name
-        )
-        .map(track => ({
-            id: track.id,
-            uri: track.uri,
-            name: track.name,
-            artist: track.artist || "",
-            album: track.album || "",
-            year: Number.isInteger(
-                Number(track.year)
-            )
-                ? Number(track.year)
-                : null,
-            cover: track.cover || null
-        }));
+    return {
+        id: track.id,
+        uri: track.uri,
+        name: track.name,
+        artist: track.artist || "",
+        album: track.album || "",
+        year: Number.isInteger(year) ? year : null,
+        cover: track.cover || null
+    };
 }
 
 
-// =====================================================
-// PLAYLIST ACTUAL
-// =====================================================
+function normalizeTracks(data) {
 
-function getSelectedPlaylist() {
-    return selectedPlaylist;
+    if (!Array.isArray(data)) {
+        throw new Error("La respuesta de canciones no es válida.");
+    }
+
+    return data
+        .filter(track => track?.uri && track?.name)
+        .map(normalizeTrack);
+}
+
+
+async function getPlaylistTracks(playlistId) {
+
+    if (!playlistId) {
+        throw new Error("Falta el ID de la playlist.");
+    }
+
+    return normalizeTracks(
+        await playlistApi(
+            `/api/playlists/${encodeURIComponent(playlistId)}/tracks`
+        )
+    );
+}
+
+
+async function getPlaylistCatalog(playlistId) {
+
+    if (!playlistId) {
+        throw new Error("Falta el ID de la playlist.");
+    }
+
+    return normalizeTracks(
+        await playlistApi(
+            `/api/playlists/${encodeURIComponent(playlistId)}/catalog`
+        )
+    );
+}
+
+
+async function getHipsterTracks(playlistId) {
+
+    const url = playlistId
+        ? `/api/playlists/${encodeURIComponent(playlistId)}/hipster`
+        : "/api/hipster/tracks";
+
+    return normalizeTracks(await playlistApi(url));
 }
 
 
 async function getSelectedPlaylistTracks() {
 
     if (!selectedPlaylist) {
-        throw new Error(
-            "No hay ninguna playlist seleccionada."
-        );
+        throw new Error("No hay ninguna playlist seleccionada.");
     }
 
-    return getPlaylistTracks(
-        selectedPlaylist.id
-    );
+    return getPlaylistTracks(selectedPlaylist.id);
 }
+
+
+// =====================================================
+// EXPORTS
+// =====================================================
+
+window.loadPlaylists = loadPlaylists;
+window.renderPlaylists = renderPlaylists;
+window.selectPlaylist = selectPlaylist;
+window.getSelectedPlaylist = getSelectedPlaylist;
+window.getPlaylistTracks = getPlaylistTracks;
+window.getPlaylistCatalog = getPlaylistCatalog;
+window.getHipsterTracks = getHipsterTracks;
+window.getSelectedPlaylistTracks = getSelectedPlaylistTracks;

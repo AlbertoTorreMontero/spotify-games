@@ -1,125 +1,164 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Spotify Games</title>
+    <title>BeatPlay — Music Games</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     <link rel="stylesheet" href="/style.css">
     <link rel="stylesheet" href="/snake/snake.css">
     <link rel="stylesheet" href="/bingo/bingo.css">
     <link rel="stylesheet" href="/hipster/hipster.css">
+    <link rel="stylesheet" href="/roulette/roulette.css">
 </head>
 
 <body>
 
-    <!-- Login -->
-    <section id="loginScreen" class="screen hidden">
-        <div class="loginBox">
-            <span class="eyebrow">SPOTIFY GAMES</span>
-            <h1>Spotify Games</h1>
-            <p>Inicia sesión con Spotify para empezar.</p>
+    <!-- =====================================================
+         LOGIN
+    ====================================================== -->
 
-            <a href="/login" class="primaryButton">
-                Iniciar sesión con Spotify
+    <section id="loginScreen" class="screen login-screen hidden">
+
+        <div class="login-container">
+
+            <span class="login-eyebrow">BEATPLAY</span>
+
+            <h1>PLAY YOUR MUSIC.</h1>
+
+            <p>Conecta tu cuenta de Spotify para jugar con tus playlists.</p>
+
+            <a href="/login" class="spotify-login-button">
+                INICIAR SESIÓN CON SPOTIFY
+                <span aria-hidden="true">↗</span>
             </a>
+
         </div>
+
     </section>
 
 
-    <!-- Menú -->
+    <!-- =====================================================
+         MENÚ
+    ====================================================== -->
+
     <section id="menuScreen" class="screen hidden">
 
-        <header class="menuHeader">
-            <span class="eyebrow">SPOTIFY GAMES</span>
-            <h1>Elige un juego</h1>
-            <p>Selecciona un juego y una playlist para empezar.</p>
-        </header>
+        <div class="app-container">
+
+            <header class="app-header">
+
+                <div class="app-logo">BEAT<span>PLAY</span></div>
+
+                <span class="app-status" id="appStatus">CONECTANDO</span>
+
+            </header>
 
 
-        <div class="gameSelector">
+            <div class="menu-title">
 
-            <button
-                class="gameCard selected"
-                data-game="snake"
-                type="button"
-            >
-                <span class="gameIcon">🐍</span>
-                <strong>Snake</strong>
-                <small>Come para cambiar de canción</small>
-            </button>
+                <span class="menu-eyebrow">SELECCIONA</span>
 
-            <button
-                class="gameCard"
-                data-game="bingo"
-                type="button"
-            >
-                <span class="gameIcon">🎶</span>
-                <strong>Bingo Musical</strong>
-                <small>Genera tarjetas con tu música</small>
-            </button>
+                <h1>TU JUEGO. <em>TU MÚSICA.</em></h1>
 
-            <button
-                class="gameCard"
-                data-game="hipster-user"
-                type="button"
-            >
-                <span class="gameIcon">💿</span>
-                <strong>Hipster</strong>
-                <small>Juega con tu playlist</small>
-            </button>
-
-            <button
-                class="gameCard"
-                data-game="hipster-global"
-                type="button"
-            >
-                <span class="gameIcon">🌍</span>
-                <strong>Hipster Global</strong>
-                <small>Juega con la playlist oficial</small>
-            </button>
-
-        </div>
-
-
-        <div class="playlistHeader">
-            <div>
-                <span class="eyebrow">TU MÚSICA</span>
-                <h2>Elige una playlist</h2>
             </div>
 
-            <span id="playlistStatus">
-                Cargando...
-            </span>
-        </div>
+
+            <!-- JUEGOS -->
+
+            <div class="game-selector" id="gameSelector">
+
+                <button class="game-card selected" type="button" data-game="snake">
+                    <span class="game-card-number">01</span>
+                    <span class="game-card-arrow" aria-hidden="true">↗</span>
+                    <span class="game-card-info">
+                        <span class="game-card-type">ARCADE</span>
+                        <span class="game-card-title">SNAKE</span>
+                    </span>
+                </button>
+
+                <button class="game-card" type="button" data-game="bingo">
+                    <span class="game-card-number">02</span>
+                    <span class="game-card-arrow" aria-hidden="true">↗</span>
+                    <span class="game-card-info">
+                        <span class="game-card-type">PARTY</span>
+                        <span class="game-card-title">BINGO</span>
+                    </span>
+                </button>
+
+                <button class="game-card" type="button" data-game="hipster-user">
+                    <span class="game-card-number">03</span>
+                    <span class="game-card-arrow" aria-hidden="true">↗</span>
+                    <span class="game-card-info">
+                        <span class="game-card-type">TU PLAYLIST</span>
+                        <span class="game-card-title">HIPSTER</span>
+                    </span>
+                </button>
+
+                <button class="game-card" type="button" data-game="hipster-global">
+                    <span class="game-card-number">04</span>
+                    <span class="game-card-arrow" aria-hidden="true">↗</span>
+                    <span class="game-card-info">
+                        <span class="game-card-type">OFICIAL</span>
+                        <span class="game-card-title">HIPSTER GLOBAL</span>
+                    </span>
+                </button>
+
+                <button class="game-card" type="button" data-game="roulette">
+                    <span class="game-card-number">05</span>
+                    <span class="game-card-arrow" aria-hidden="true">↗</span>
+                    <span class="game-card-info">
+                        <span class="game-card-type">HASTA 10 JUGADORES</span>
+                        <span class="game-card-title">MUSIC ROULETTE</span>
+                    </span>
+                </button>
+
+            </div>
 
 
-        <div
-            id="playlistList"
-            class="playlistGrid"
-        ></div>
+            <!-- PLAYLISTS -->
+
+            <section class="playlist-section" id="playlistSection">
+
+                <div class="playlist-header">
+                    <h2>TU MÚSICA</h2>
+                    <span class="playlist-loading" id="playlistStatus">Cargando playlists…</span>
+                </div>
+
+                <div class="playlist-grid" id="playlistList"></div>
+
+            </section>
 
 
-        <div class="menuFooter">
-            <span id="selectedText">
-                Selecciona una playlist
-            </span>
+            <!-- EMPEZAR -->
 
-            <button
-                id="startButton"
-                class="primaryButton"
-                type="button"
-                disabled
-            >
-                Empezar Snake
-            </button>
+            <div class="start-section">
+
+                <div class="start-info">
+                    <span class="selected-label">SELECCIÓN</span>
+                    <div id="selectedText">Elige una playlist</div>
+                </div>
+
+                <button class="start-button" id="startButton" type="button" disabled>
+                    <span id="startLabel">EMPEZAR SNAKE</span>
+                    <span aria-hidden="true">↗</span>
+                </button>
+
+            </div>
+
         </div>
 
     </section>
 
 
-    <!-- Juegos -->
+    <!-- =====================================================
+         PANTALLAS DE JUEGO
+    ====================================================== -->
 
     <section id="gameScreen" class="screen hidden">
         <div id="snakeContainer"></div>
@@ -133,24 +172,28 @@
         <div id="hipsterContainer"></div>
     </section>
 
+    <section id="rouletteScreen" class="screen hidden">
+        <div id="rouletteContainer"></div>
+    </section>
 
-    <!-- Spotify -->
+
+    <!-- =====================================================
+         SCRIPTS
+    ====================================================== -->
 
     <script src="https://sdk.scdn.co/spotify-player.js"></script>
 
     <script src="/spotify/auth.js"></script>
-    <script src="/spotify/playlists.js"></script>
     <script src="/spotify/spotify.js"></script>
-
-    <!-- Juegos -->
+    <script src="/spotify/playlists.js"></script>
 
     <script src="/snake/snake.js"></script>
     <script src="/bingo/bingo.js"></script>
     <script src="/hipster/hipster.js"></script>
-
-    <!-- Aplicación -->
+    <script src="/roulette/roulette.js"></script>
 
     <script src="/script.js"></script>
 
 </body>
+
 </html>

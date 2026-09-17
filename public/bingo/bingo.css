@@ -1,70 +1,95 @@
+/* =========================================================
+   BEATPLAY — BINGO
+   Interfaz en negro; los cartones siguen siendo papel
+   (fondo claro) porque están pensados para imprimirse.
+========================================================= */
+
 #bingoScreen {
     width: 100%;
     min-height: 100vh;
-    padding: 40px;
-    background: #080808;
-    color: #fff;
+    padding: 30px 5vw 60px;
+    background: var(--black, #0a0a0a);
+    color: var(--white, #f1f0eb);
 }
+
+
+/* =========================================================
+   CABECERA
+========================================================= */
 
 .bingoHeader {
     width: min(1200px, 100%);
     margin: 0 auto 30px;
-
+    padding-bottom: 25px;
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    gap: 20px;
+    align-items: flex-end;
+    gap: 25px;
+    border-bottom: 1px solid var(--line, #292929);
 }
 
 .bingoHeader h1 {
-    margin: 8px 0;
-    font-size: 42px;
+    margin: 10px 0 6px;
+    font-family: var(--display, "Bebas Neue", sans-serif);
+    font-size: clamp(46px, 6vw, 72px);
+    font-weight: 400;
+    line-height: 0.8;
 }
 
 .bingoHeader p {
-    color: #777;
+    color: var(--grey, #858582);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 9px;
+    letter-spacing: 1.5px;
 }
 
 #exitBingoButton {
-    border: 0;
-    border-radius: 8px;
-    padding: 11px 18px;
-    background: #171717;
-    color: #aaa;
+    height: 42px;
+    padding: 0 18px;
+    border: 1px solid var(--line, #292929);
+    background: transparent;
+    color: var(--grey, #858582);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 9px;
+    letter-spacing: 1px;
     cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease;
 }
 
 #exitBingoButton:hover {
-    background: #252525;
-    color: #fff;
+    border-color: var(--white, #f1f0eb);
+    color: var(--white, #f1f0eb);
 }
 
 
-/* Configuración */
+/* =========================================================
+   CONFIGURACIÓN
+========================================================= */
 
 .bingoSetup {
     width: min(1200px, 100%);
     margin: 0 auto 30px;
-    padding: 25px;
-
+    padding: 28px;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: space-between;
     gap: 30px;
-
-    background: #121212;
-    border: 1px solid #242424;
-    border-radius: 14px;
+    border: 1px solid var(--line, #292929);
 }
 
 .bingoSetupInfo h2 {
-    margin: 8px 0;
-    font-size: 26px;
+    margin: 6px 0 8px;
+    font-family: var(--display, "Bebas Neue", sans-serif);
+    font-size: 34px;
+    font-weight: 400;
+    line-height: 0.85;
 }
 
 .bingoSetupInfo p {
-    color: #777;
-    font-size: 14px;
+    max-width: 420px;
+    color: var(--grey, #858582);
+    font-size: 13px;
+    line-height: 1.5;
 }
 
 .bingoControls {
@@ -76,23 +101,32 @@
 .bingoControl {
     display: flex;
     flex-direction: column;
-    gap: 7px;
+    gap: 8px;
 }
 
 .bingoControl label {
-    color: #777;
-    font-size: 12px;
+    color: var(--accent, #8b78a5);
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 8px;
+    letter-spacing: 1.5px;
 }
 
 .bingoControl input,
 .bingoControl select {
-    height: 42px;
-    border: 1px solid #333;
-    border-radius: 8px;
+    height: 44px;
     padding: 0 12px;
+    border: 1px solid var(--line, #292929);
+    background: #121212;
+    color: var(--white, #f1f0eb);
+    font-family: inherit;
+    font-size: 13px;
     outline: none;
-    background: #1d1d1d;
-    color: #fff;
+    transition: border-color 0.2s ease;
+}
+
+.bingoControl input:focus,
+.bingoControl select:focus {
+    border-color: var(--accent, #8b78a5);
 }
 
 .bingoControl input {
@@ -104,43 +138,52 @@
 }
 
 
-/* Botones */
+/* =========================================================
+   BOTONES
+========================================================= */
 
 .primaryButton,
 .secondaryButton {
-    height: 42px;
-    padding: 0 18px;
+    height: 44px;
+    padding: 0 20px;
     border: 0;
-    border-radius: 8px;
-    font-weight: 700;
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 10px;
+    letter-spacing: 1px;
     cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
 }
 
 .primaryButton {
-    background: #1db954;
-    color: #fff;
+    background: var(--white, #f1f0eb);
+    color: var(--black, #0a0a0a);
 }
 
-.primaryButton:hover {
-    background: #1ed760;
+.primaryButton:hover:not(:disabled) {
+    background: var(--accent, #8b78a5);
+    color: var(--white, #f1f0eb);
 }
 
 .secondaryButton {
-    background: #292929;
-    color: #fff;
+    background: transparent;
+    border: 1px solid var(--line, #292929);
+    color: var(--grey, #858582);
 }
 
-.secondaryButton:hover {
-    background: #353535;
+.secondaryButton:hover:not(:disabled) {
+    border-color: var(--white, #f1f0eb);
+    color: var(--white, #f1f0eb);
 }
 
 button:disabled {
-    opacity: .35;
+    opacity: 0.3;
     cursor: not-allowed;
 }
 
 
-/* Cartones */
+/* =========================================================
+   CARTONES
+========================================================= */
 
 #bingoCards {
     width: min(1200px, 100%);
@@ -155,43 +198,49 @@ button:disabled {
 
 .bingoCard {
     padding: 20px;
-    background: #fff;
+    background: #f2f1ed;
     color: #111;
-    border-radius: 12px;
-    box-shadow: 0 15px 40px rgba(0, 0, 0, .35);
+    border: 1px solid #d8d5cd;
 }
 
 .bingoCardHeader {
     margin-bottom: 15px;
+    padding-bottom: 10px;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: space-between;
-}
-
-.bingoCardHeader h3 {
-    margin-top: 4px;
-    font-size: 18px;
+    border-bottom: 1px solid #111;
 }
 
 .bingoCardHeader span {
-    color: #777;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 1px;
+    color: #6d6d68;
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 8px;
+    letter-spacing: 1.5px;
+}
+
+.bingoCardHeader h3 {
+    margin-top: 5px;
+    font-family: var(--display, "Bebas Neue", sans-serif);
+    font-size: 26px;
+    font-weight: 400;
+    line-height: 0.85;
 }
 
 .bingoCardHeader strong {
-    font-size: 18px;
+    font-family: var(--display, "Bebas Neue", sans-serif);
+    font-size: 24px;
+    font-weight: 400;
 }
 
 
-/* Tabla */
+/* TABLA */
 
 .bingoGrid {
     display: grid;
     grid-template-columns: repeat(9, 1fr);
     grid-template-rows: repeat(3, 1fr);
-    border: 2px solid #111;
+    border: 1px solid #111;
 }
 
 .bingoCell {
@@ -202,8 +251,8 @@ button:disabled {
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border: 1px solid #bbb;
-    background: #eee;
+    border: 1px solid #c9c6be;
+    background: #e6e3db;
     text-align: center;
 }
 
@@ -215,7 +264,6 @@ button:disabled {
     width: 58%;
     aspect-ratio: 1;
     margin-bottom: 5px;
-    border-radius: 3px;
     object-fit: cover;
 }
 
@@ -229,19 +277,15 @@ button:disabled {
     white-space: nowrap;
 }
 
-
-/* Pie */
-
 .bingoCardFooter {
-    margin-top: 10px;
+    margin-top: 12px;
     display: flex;
     justify-content: space-between;
-    color: #777;
-    font-size: 9px;
+    color: #6d6d68;
+    font-family: var(--mono, "DM Mono", monospace);
+    font-size: 8px;
+    letter-spacing: 1px;
 }
-
-
-/* Acciones */
 
 .bingoActions {
     margin: 30px 0;
@@ -251,20 +295,22 @@ button:disabled {
 }
 
 
-/* Pantalla */
+/* =========================================================
+   AJUSTES DE PANTALLA
+========================================================= */
 
 @media screen {
 
     #bingoCards .bingoCard {
-        padding: 12px;
+        padding: 14px;
     }
 
     #bingoCards .bingoCardHeader {
-        margin-bottom: 8px;
+        margin-bottom: 10px;
     }
 
     #bingoCards .bingoCardHeader h3 {
-        font-size: 14px;
+        font-size: 20px;
     }
 
     #bingoCards .bingoCell img {
@@ -279,7 +325,9 @@ button:disabled {
 }
 
 
-/* Responsive */
+/* =========================================================
+   RESPONSIVE
+========================================================= */
 
 @media (max-width: 800px) {
 
@@ -294,7 +342,7 @@ button:disabled {
     }
 
     .bingoHeader h1 {
-        font-size: 32px;
+        font-size: 38px;
     }
 
     .bingoControls {
@@ -305,6 +353,7 @@ button:disabled {
     .bingoControl input,
     .bingoControl select {
         width: 100%;
+        min-width: 0;
     }
 
     .bingoCardsGrid {
@@ -313,13 +362,16 @@ button:disabled {
 }
 
 
-/* Impresión */
+/* =========================================================
+   IMPRESIÓN
+========================================================= */
 
 @media print {
 
     #bingoScreen {
         padding: 0;
         background: #fff;
+        color: #111;
     }
 
     .bingoHeader,
@@ -341,10 +393,14 @@ button:disabled {
         width: 100%;
         margin: 0 auto 10mm;
         padding: 20px;
-        border-radius: 0;
-        box-shadow: none;
+        background: #fff;
+        border: 0;
         break-inside: avoid;
         page-break-inside: avoid;
+    }
+
+    .bingoCell {
+        background: #fff;
     }
 
     .bingoCard:last-child {
